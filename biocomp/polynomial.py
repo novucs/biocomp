@@ -1,25 +1,6 @@
-import math
 import random
 
-
-def parse_binary_string_features(features):
-    return [float(i) for i in features[0]]
-
-
-def parse_floating_point_features(features):
-    return [float(i) for i in features]
-
-
-def load_dataset(filename, parse_features):
-    with open(filename, 'r') as file:
-        contents = [line.split() for line in file.readlines()[1:] if line]
-
-    if len(contents) == 0:
-        raise ValueError('Invalid dataset, no data points file contents')
-
-    features = [parse_features(values[:-1]) for values in contents]
-    labels = [bool(int(values[-1])) for values in contents]
-    return list(zip(features, labels))
+from biocomp import datasets
 
 
 class EvolutionaryTrainer:
@@ -78,24 +59,7 @@ class EvolutionaryTrainer:
             # crossover
             def crossover():
                 if self.crossover_chance < random.uniform(0, 1):
-                    parent = select_parent()
-                    return NeuralNetwork(layers=[
-                        Layer(l.input_size, l.output_size, l.weights.copy())
-                        for l in parent.layers
-                    ])
-
-                mother = select_parent()
-                father = select_parent()
-                child_layers = []
-
-                for l1, l2 in zip(mother.layers, father.layers):
-                    input_size = l1.input_size
-                    output_size = l1.output_size
-                    split = int(random.uniform(0, len(l1.weights)))
-                    weights = l1.weights[:split] + l2.weights[split:]
-                    child_layers.append(Layer(input_size, output_size, weights))
-
-                return NeuralNetwork(layers=child_layers)
+                    pass
 
             self.population = [crossover() for _ in range(self.population_size - 1)]
 
@@ -107,23 +71,12 @@ class EvolutionaryTrainer:
 
 
 def main():
-    # dataset_files = {
-    #     'data1.txt': parse_binary_string_features,
-    #     'data2.txt': parse_binary_string_features,
-    #     'data3.txt': parse_floating_point_features,
-    # }
-
     # Set the seed for reproducibility.
     random.seed(1)
 
     # Grab dataset.
-    dataset = load_dataset('data1.txt', parse_binary_string_features)
-
-    # Shuffle and split the dataset into train and test sets.
-    random.shuffle(dataset)
-    split = int(len(dataset) * 0.75)
-    train_x, train_y = zip(*dataset[:split])
-    test_x, test_y = zip(*dataset[split:])
+    dataset = datasets.load_dataset_1()
+    train_x, train_y, test_x, test_y = datasets.split(dataset, 0.9)
 
     # Train model based on dataset.
     trainer = EvolutionaryTrainer()
