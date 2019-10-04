@@ -3,19 +3,17 @@ import random
 
 from biocomp import datasets
 
-dataset = datasets.load_dataset_1()
+dataset = datasets.load_dataset_2()
 train_x, train_y, *_ = datasets.split(dataset, 0.9)
 
 gene = [0, 1]
-rule_count = 32
-rule_size = len(train_x[0]) + 1
-gene_size = rule_size * rule_count
+condition_count = 5
+condition_size = len(train_x[0])
+gene_size = condition_size * condition_count + 1
 population_size = 100
 population = [
-    list(itertools.chain(
-        *([random.choice([0, 1, "#"]) for _ in range(rule_size)] + [random.choice([0, 1])]
-          for _ in range(rule_count))
-    ))
+    [random.choice([0, 1, "#"])
+     for _ in range(condition_size * condition_count)] + [random.choice([0, 1])]
     for _ in range(population_size)
 ]
 generation_count = 1000
@@ -24,17 +22,17 @@ mutation_chance = 0.05
 
 
 def evaluate(gene, features):
-    for index in range(0, gene_size, rule_size):
-        *rule, prediction = gene[index: index + rule_size]
-        rule_matches_feature = all(p == f or p == "#" for p, f in zip(rule, features))
-        if rule_matches_feature:
-            return prediction
-    return None
+    prediction = gene[-1]
+    for index in range(0, gene_size - 1, condition_size):
+        condition = gene[index: index + condition_size]
+        condition_success = all(p == f or p == "#" for p, f in zip(condition, features))
+        if not condition_success:
+            return 0 if prediction else 1
+    return prediction
 
 
 def fitness(gene, features, labels):
-    return sum(1 if evaluate(gene, f) == l else 0 for f, l in zip(features, labels)) / len(
-        labels)
+    return sum(1 if evaluate(gene, f) == l else 0 for f, l in zip(features, labels)) / len(labels)
 
 
 def mutate(gene):
