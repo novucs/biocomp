@@ -7,43 +7,44 @@ dataset = datasets.load_dataset_1()
 train_x, train_y, *_ = datasets.split(dataset, 0.9)
 
 gene = [0, 1]
-condition_count = 3
-condition_size = len(train_x[0])
-gene_size = condition_size * condition_count + 1
+rule_count = 25
+rule_size = len(train_x[0]) + 1
+gene_size = rule_size * rule_count
 population_size = 100
-population = [
-    [random.choice([0, 1, "#"])
-     for _ in range(condition_size * condition_count)] + [random.choice([0, 1])]
-    for _ in range(population_size)
-]
 generation_count = 1000
 crossover_chance = 0.75
 mutation_chance = 0.05
 
 
+def random_gene(index):
+    return random.choice([0, 1, '#'] if index % rule_size == 0 else [0, 1])
+
+
+population = [
+    [random_gene(i) for i in range(rule_size * rule_count)]
+    for _ in range(population_size)
+]
+
+
 def evaluate(gene, features):
-    prediction = gene[-1]
-    for index in range(0, gene_size - 1, condition_size):
-        condition = gene[index: index + condition_size]
-        condition_success = all(p == f or p == "#" for p, f in zip(condition, features))
-        if not condition_success:
-            return 0 if prediction else 1
-    return prediction
+    final_prediction = [0, 0]
+    for index in range(0, gene_size, rule_size):
+        *rule, prediction = gene[index: index + rule_size]
+        if all(p == f or p == "#" for p, f in zip(rule, features)):
+            final_prediction[prediction] += 1
+    return final_prediction.index(max(final_prediction))
 
 
 def fitness(gene, features, labels):
-    return sum(1 if evaluate(gene, f) == l else 0 for f, l in zip(features, labels)) / len(labels)
+    return sum(1 if evaluate(gene, f) == l else 0
+               for f, l in zip(features, labels)) / len(labels)
 
 
 def mutate(gene):
-    if random.uniform(0, 1) > mutation_chance:
-        return gene
-    index = random.randint(0, gene_size - 1)
-    if index == (gene_size - 1):
-        replacement = random.choice([0, 1])
-    else:
-        replacement = random.choice([0, 1, '#'])
-    gene[index] = replacement
+    for index in range(len(gene)):
+        if random.uniform(0, 1) > mutation_chance:
+            return gene
+        gene[index] = random_gene(index)
     return gene
 
 

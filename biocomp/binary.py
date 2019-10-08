@@ -1,7 +1,7 @@
 import random
 
 population_size = 100
-gene_size = 10
+gene_size = 50
 generations = 1000
 crossover_chance = 0.75
 mutation_chance = 0.01
@@ -13,7 +13,7 @@ for generation in range(generations):
     total_fitness = sum(population_fitness)
     best_fitness = max(population_fitness)
     best = population[population_fitness.index(best_fitness)]
-    print('best:', best_fitness, 'avg:', total_fitness / population_size)
+    print('best:', best_fitness, 'mean:', total_fitness / population_size)
 
     if best_fitness == gene_size:
         print('found solution', best, 'at fitness', best_fitness, 'on generation', generation)
