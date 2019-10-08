@@ -3,11 +3,11 @@ import random
 
 from biocomp import datasets
 
-dataset = datasets.load_dataset_2()
+dataset = datasets.load_dataset_1()
 train_x, train_y, *_ = datasets.split(dataset, 0.9)
 
 gene = [0, 1]
-condition_count = 5
+condition_count = 3
 condition_size = len(train_x[0])
 gene_size = condition_size * condition_count + 1
 population_size = 100
