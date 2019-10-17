@@ -34,7 +34,15 @@ def load_dataset_3():
     return load_dataset('data3.txt', parse_floating_point_features)
 
 
-def split(dataset, train_percent):
+def split(dataset, train_percent=1.0):
+    if train_percent >= 1.0:
+        train_x, train_y = zip(*dataset)
+        return train_x, train_y
+
+    if train_percent <= 0.0:
+        test_x, test_y = zip(*dataset)
+        return test_x, test_y
+
     random.shuffle(dataset)
     index = int(len(dataset) * train_percent)
     train_x, train_y = zip(*dataset[:index])

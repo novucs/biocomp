@@ -2,7 +2,7 @@ import random
 
 population_size = 50
 gene_size = 64
-generations = 100000
+generations = 1000
 crossover_chance = 0.5
 mutation_chance = 0.015
 tournament_size = 5

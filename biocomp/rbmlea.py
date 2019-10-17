@@ -1,19 +1,18 @@
-import itertools
 import random
 
 from biocomp import datasets
 
 dataset = datasets.load_dataset_1()
-train_x, train_y, *_ = datasets.split(dataset, 0.9)
+train_x, train_y, *_ = datasets.split(dataset)
 
-gene = [0, 1]
-rule_count = 25
+rule_count = 32
 rule_size = len(train_x[0]) + 1
 gene_size = rule_size * rule_count
-population_size = 100
+population_size = 50
 generation_count = 1000
-crossover_chance = 0.75
-mutation_chance = 0.05
+crossover_chance = 0.5
+mutation_chance = 0.0125
+tournament_size = 5
 
 
 def random_gene(index):
@@ -40,44 +39,43 @@ def fitness(gene, features, labels):
                for f, l in zip(features, labels)) / len(labels)
 
 
-def mutate(gene):
-    for index in range(len(gene)):
-        if random.uniform(0, 1) > mutation_chance:
-            return gene
-        gene[index] = random_gene(index)
-    return gene
-
-
 for generation in range(generation_count):
     population_fitness = [fitness(gene, train_x, train_y) for gene in population]
-    best_gene_index = population_fitness.index(max(population_fitness))
+    best_fitness = max(population_fitness)
+    best_gene_index = population_fitness.index(best_fitness)
     best_gene = population[best_gene_index]
     total_fitness = sum(population_fitness)
     mean_fitness = total_fitness / population_size
 
-    print('best:', population_fitness[best_gene_index], 'mean:', mean_fitness)
+    if best_fitness == 1.0:
+        print('found solution in', generation, 'generations')
+        break
+
+    print('best:', best_fitness, 'mean:', mean_fitness)
 
 
     def select_parent():
-        target = random.uniform(0, total_fitness)
-        partial = 0
-        for chromosome, fitness in zip(population, population_fitness):
-            partial += fitness
-            if partial > target:
-                return chromosome
-        return random.choice(population)
+        fittest, fitness = None, -1
+        for i in range(tournament_size):
+            index = int(random.random() * population_size)
+            if population_fitness[index] > fitness:
+                fitness = population_fitness[index]
+                fittest = population[index]
+        return fittest
 
 
     def crossover():
-        if crossover_chance < random.uniform(0, 1):
-            return select_parent().copy()
-
         mother = select_parent()
         father = select_parent()
-        index = random.randint(0, gene_size - 1)
-        return mother[:index] + father[index:]
+        return [random.choice((m, f)) for m, f in zip(mother, father)]
 
 
     population = [crossover() for _ in range(population_size - 1)]
-    population = [mutate(gene) for gene in population]
+
+    # mutate
+    for gene in population:
+        for index in range(gene_size):
+            if mutation_chance > random.random():
+                gene[index] = random_gene(index)
+
     population.append(best_gene)
