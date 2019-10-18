@@ -2,21 +2,22 @@ import random
 
 from biocomp import datasets
 
-dataset = datasets.load_dataset_1()
+dataset = datasets.load_dataset_2()
 train_x, train_y, *_ = datasets.split(dataset)
 
 rule_count = 32
 rule_size = len(train_x[0]) + 1
 gene_size = rule_size * rule_count
 population_size = 50
-generation_count = 1000
+generation_count = 10000
 crossover_chance = 0.5
 mutation_chance = 0.0125
 tournament_size = 5
 
 
 def random_gene(index):
-    return random.choice([0, 1, '#'] if index % rule_size == 0 else [0, 1])
+    return random.choice([0, 1, '#'] if index % rule_size != (rule_size - 1) else [0, 1])
+    # return random.choice([0, 1])
 
 
 population = [
@@ -48,7 +49,10 @@ for generation in range(generation_count):
     mean_fitness = total_fitness / population_size
 
     if best_fitness == 1.0:
-        print('found solution in', generation, 'generations')
+        print('Found solution in', generation, 'generations:')
+        for rule_id, index in enumerate(range(0, gene_size, rule_size)):
+            *rule, prediction = best_gene[index: index + rule_size]
+            print(f'\tRule #{rule_id + 1}', rule, ':', prediction)
         break
 
     print('best:', best_fitness, 'mean:', mean_fitness)

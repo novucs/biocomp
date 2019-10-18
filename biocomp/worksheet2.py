@@ -35,6 +35,9 @@ def fitness(gene):
 
 for generation in range(generations):
     population_fitness = [fitness(gene) for gene in population]
+    # min_fitness = min(population_fitness)
+    # population_fitness = [(f + abs(min_fitness)) for f in population_fitness]
+
     total_fitness = sum(population_fitness)
     best_fitness = max(population_fitness)
     best = population[population_fitness.index(best_fitness)].copy()
@@ -48,6 +51,14 @@ for generation in range(generations):
         break
 
 
+    # def select_parent():
+    #     selection_point = random.randint(0, total_fitness - 1)
+    #     running_total = 0
+    #
+    #     for gene, fitness in zip(population, population_fitness):
+    #         running_total += fitness
+    #         if running_total > selection_point:
+    #             return gene
     def select_parent():
         fittest, fitness = None, -float('inf')
         for i in range(tournament_size):
