@@ -19,8 +19,8 @@ def main():
     def create_model():
         target = Sequential()
         # target.add(Dense(4))
-        target.add(SimpleRNN(8, input_shape=(len(train_x[0]), 1)))
-        target.add(Dense(1))
+        target.add(SimpleRNN(4, input_shape=(len(train_x[0]), 1), use_bias=False, activation='relu'))
+        target.add(Dense(1, use_bias=False, activation='relu'))
         target.compile(optimizer=Adam(learning_rate=0.005), loss='binary_crossentropy')
         return target
 
@@ -38,14 +38,15 @@ def main():
 
         print(loss)
         if loss < 0.005:
+            print(model.weights)
             break
 
-    xs = numpy.expand_dims(numpy.array(test_x), axis=2)
-    yhats = model.predict(xs)
-
-    for features, yhat, yreal in zip(xs, yhats, test_y):
-        yhat = min(1, max(0, round(yhat[0])))
-        print(' '.join(str(x[0]) for x in features), ':', yhat, int(yreal), yreal == yhat)
+    # xs = numpy.expand_dims(numpy.array(test_x), axis=2)
+    # yhats = model.predict(xs)
+    #
+    # for features, yhat, yreal in zip(xs, yhats, test_y):
+    #     yhat = min(1, max(0, round(yhat[0])))
+    #     print(' '.join(str(x[0]) for x in features), ':', yhat, int(yreal), yreal == yhat)
 
 
 if __name__ == '__main__':
