@@ -1,4 +1,3 @@
-import math
 import random
 
 from biocomp import datasets
@@ -37,33 +36,35 @@ def net():
     return predict, total_weight_count
 
 
+def rand_weight():
+    # return random.choice([-1., -.5, 0., .5, 1.])
+    return random.uniform(-2, 2)
+
+
 def main():
     features, labels, *_ = datasets.split(datasets.load_dataset_1())
     predict, gene_size = net()
     population_size = 50
-    population = [[random.uniform(-1, 1) for _ in range(gene_size)]
+    population = [[rand_weight() for _ in range(gene_size)]
                   for _ in range(population_size)]
 
-    # for fid in range(32):
-    #     print(features[fid], labels[fid], predict(features[fid], [
-    #         0.7050795555114746, 1.3091033697128296, -0.8495133519172668,
-    #           -1.4178032875061035,
-    #         -1.380048394203186, 0.8350871205329895, 0.3204783499240875,
-    #           -1.2147303819656372, 0.19507579505443573, 0.12077929824590683,
-    #                                  0.2835042476654053, 0.5494593977928162,
-    #              -1.48383367061615, 0.9164571762084961, 0.8283399343490601,
-    #              -0.5954242944717407, 0.7464731335639954, 0.03303124010562897,
-    #                                     1.4750480651855469, 1.8638049364089966,
-    #         -0.7694922089576721, 0.5139452219009399, -0.7917553782463074,
-    #             2.0158274173736572
-    #
-    #     ]))
-    # return
+    # population[0] = [0.5, 0.5, 1.0, 0.0, 1.0, -1.0, 0.0, -0.5, 0.0, 0.5, 1.0, 0.0, 0.5, -0.5, 0.5, -0.5, 0.0, -0.5, 1.0, 0.0, 1.0, 0.5, -0.5, 0.0]
+    # population[1] = [0.5624719564907368, 0.01579871722570525, 0.8948303472886368, 0.6157340941722174, 0.9949089949082408, -0.9718687426685406, -0.04012044940035153, 1.929627787275046, 0.0, 1.5941283662940395, 0.9698990198034685, -0.5937242537595626, 0.5076766524913334, 0.31496156255221663, 0.57901642370433, -1.8955744904976095, -1.29001620980149, 1.8529476938214517, 1.534186975032509, 1.6210843111881692, 0.7812971429782949, 1.8966908800829234, 1.0429150609525122, 0.18841093752313087]
 
-    generation_count = 1000
+    generation_count = 10000
     tournament_size = 5
-    crossover_chance = 0.1
-    mutation_chance = 0.00125
+    crossover_chance = 0.25
+    mutation_chance = 0.01
+    best = []
+
+    # # Attempt at brute force searching...
+    # b, y = None, -float('inf')
+    # import itertools
+    # for p in itertools.product([-1.0, -0.5, 0.0, 0.5, 1.0], repeat=24):
+    #     fns = sum(int(predict(f, p) == l) for f, l in zip(features, labels))
+    #     if fns > y:
+    #         b, y = p, fns
+    #         print(y)
 
     for generation in range(generation_count):
         fitnesses = [sum(int(predict(f, g) == l) for f, l in zip(features, labels))
@@ -96,10 +97,12 @@ def main():
         def mutate(gene):
             for index in range(len(gene)):
                 if mutation_chance > random.random():
-                    gene[index] = random.uniform(-1, 1)
+                    gene[index] = rand_weight()
             return gene
 
         population = [mutate(crossover()) for _ in range(population_size - 1)] + [best]
+
+    print(best)
 
 
 if __name__ == '__main__':
