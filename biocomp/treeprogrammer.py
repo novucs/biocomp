@@ -1,3 +1,4 @@
+import copy
 import random
 
 from biocomp import datasets
@@ -75,7 +76,7 @@ from biocomp import datasets
 
 
 def create_gene_inner(ls, gs):
-    ls = ls.copy()
+    ls = copy.deepcopy(ls)
     ls['depth'] += 1
 
     def create_node(settings):
@@ -171,11 +172,11 @@ def create_gene_threshold():
 def create_gene_global_settings(feature_count):
     return {
         'feature_count': feature_count,
-        'max_depth': 4,
+        'max_depth': 8,
         'only_use_features_once': True,
         'unused_features': list(range(feature_count)),
-        'constant_max': 4,
-        'constant_min': -4,
+        'constant_max': 1.0,
+        'constant_min': -1.0,
         'odds_subtree': 1.0,
         'odds_leaf': 1.0,
         'odds_leaf_feature': 1.0,
@@ -247,33 +248,26 @@ def crossover(mother, father, max_depth):
         index = random.randint(0, len(perm) - 1)
         parent, child_index, depth = perm[index]
         child = parent['children'][child_index]
-        size = max([depth for *_, depth in iterate_gene_parent_view(child)] + [0])
+        size = max((depth for *_, depth in iterate_gene_parent_view(child)), default=0)
         return parent['children'], child_index, size
 
-    offspring_1 = mother.copy()
+    offspring_1 = copy.deepcopy(mother)
     root_1, index_1, size_1 = random_node(offspring_1)
 
-    offspring_2 = father.copy()
-    root_2, index_2, size_2 = [], 0, float('inf')
+    offspring_2 = copy.deepcopy(father)
+    root_2, index_2, size_2 = random_node(offspring_2)
+
     while (size_2 + size_1) > max_depth:
+        root_1, index_1, size_1 = random_node(offspring_1)
         root_2, index_2, size_2 = random_node(offspring_2)
 
     root_1[index_1], root_2[index_2] = root_2[index_2], root_1[index_1]
-
-    try:
-        pretty(offspring_1)
-    except RecursionError:
-        print(pretty(mother))
-        print(pretty(father))
-        print(pretty(root_1))
-        print(pretty(root_2))
-        raise ValueError('Recursion error failed on crossover')
 
     return offspring_1, offspring_2
 
 
 def mutate(gene, mutation_chance, feature_count):
-    gene = gene.copy()
+    gene = copy.deepcopy(gene)
     for node, index, depth in iterate_gene_parent_view(gene):
         if random.uniform(0, 1) < mutation_chance:
             global_settings = create_gene_global_settings(feature_count)
@@ -297,9 +291,9 @@ def tournament_selection(population, fitnesses, tournament_size):
 def main():
     features, labels, *_ = datasets.split(datasets.load_dataset_1())
     population_size = 50
-    generation_count = 1000
+    generation_count = 10000
     crossover_chance = 0.5
-    mutation_chance = 0.0125
+    mutation_chance = 0.1
     tournament_size = 5
     max_depth = 4
 
@@ -310,6 +304,7 @@ def main():
         fitnesses = [fitness(gene, features, labels) for gene in population]
         best_fitness = max(fitnesses)
         best = population[fitnesses.index(best_fitness)]
+        mean = sum(fitnesses) / population_size
 
         if best_fitness > overall_best_fitness:
             overall_best, overall_best_fitness = best, best_fitness
@@ -319,8 +314,8 @@ def main():
                 print('Model converged, best solution found on generation', generation)
                 return
 
-        print('Best:', overall_best_fitness, 'Mean:', sum(fitnesses) / population_size)
-        population[fitnesses.index(min(fitnesses))] = overall_best.copy()
+        print(generation, 'Best:', overall_best_fitness, 'Mean:', mean)
+        population[fitnesses.index(min(fitnesses))] = copy.deepcopy(overall_best)
 
         def select():
             return tournament_selection(population, fitnesses, tournament_size)
