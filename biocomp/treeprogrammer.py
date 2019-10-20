@@ -172,7 +172,7 @@ def create_gene_threshold():
 def create_gene_global_settings(feature_count):
     return {
         'feature_count': feature_count,
-        'max_depth': 8,
+        'max_depth': 12,
         'only_use_features_once': True,
         'unused_features': list(range(feature_count)),
         'constant_max': 1.0,
@@ -300,6 +300,12 @@ def main():
     population = [create_gene(len(features[0])) for _ in range(population_size)]
     overall_best, overall_best_fitness = None, -float('inf')
 
+    # def predict(f0, f1, f2, f3, f4):
+    #     return (((((((f1 + f2) + (f4 + f0)) % -0.4084233263502599) + f3) % 0.4290489863403546) % 0.5744925820063951) + 0.2948463671644945) > 0.5074617999721471
+    # for f, l in zip(features, labels):
+    #     print(f, predict(*f), l)
+    # return
+
     for generation in range(generation_count):
         fitnesses = [fitness(gene, features, labels) for gene in population]
         best_fitness = max(fitnesses)
@@ -334,6 +340,8 @@ def main():
             if random.random() < mutation_chance else gene
             for gene in population
         ]
+
+        population.extend((create_gene(len(features[0])) for _ in range(50)))
 
 
 if __name__ == '__main__':
