@@ -117,10 +117,18 @@ def create_gene_inner(ls, gs):
             'pretty': lambda: str(value),
         }
 
+    def create_leaf_features_sum():
+        return {
+            'type': 'features_sum',
+            'evaluate': lambda f: sum(f),
+            'pretty': lambda: 'sum(features)',
+        }
+
     def create_leaf():
         return create_node({
             'odds_leaf_feature': create_leaf_feature,
             'odds_leaf_constant': create_leaf_constant,
+            'odds_leaf_features_sum': create_leaf_features_sum,
         })
 
     # Subtree creation
@@ -128,35 +136,43 @@ def create_gene_inner(ls, gs):
     def create_children(count=2):
         return [create_gene_inner(ls, gs) for _ in range(count)]
 
-    def create_subtree_addition():
-        children = create_children()
+    def create_subtree_abstract(name, symbol, evaluate):
+        a, b = create_children()
         return {
             'type': 'addition',
-            'children': children,
-            'evaluate': lambda f: sum(child['evaluate'](f) for child in children),
-            'pretty': lambda: f"({children[0]['pretty']()} + {children[1]['pretty']()})",
+            'children': [a, b],
+            'evaluate': lambda f: evaluate(a['evaluate'](f), b['evaluate'](f)),
+            'pretty': lambda: f"({a['pretty']()} {symbol} {b['pretty']()})",
         }
 
-    def create_subtree_modulo():
-        children = create_children()
+    def create_subtree_addition():
+        return create_subtree_abstract('addition', '+', lambda a, b: a + b)
 
-        def evaluate_modulo(f):
-            a, b = children[0]['evaluate'](f), children[1]['evaluate'](f)
+    def create_subtree_modulo():
+        def evaluate_modulo(a, b):
             if b == 0:
                 return 0
             return a % b
+        return create_subtree_abstract('modulo', '%', evaluate_modulo)
 
-        return {
-            'type': 'modulo',
-            'children': children,
-            'evaluate': evaluate_modulo,
-            'pretty': lambda: f"({children[0]['pretty']()} % {children[1]['pretty']()})",
-        }
+    def create_subtree_divide():
+        def evaluate_divide(a, b):
+            if b == 0:
+                return 0
+            return a / b
+        return create_subtree_abstract('divide', '/', evaluate_divide)
+
+    def create_subtree_multiply():
+        def evaluate_multiply(a, b):
+            return a * b
+        return create_subtree_abstract('multiply', '*', evaluate_multiply)
 
     def create_subtree():
         return create_node({
             'odds_subtree_+': create_subtree_addition,
             'odds_subtree_%': create_subtree_modulo,
+            # 'odds_subtree_/': create_subtree_divide,
+            # 'odds_subtree_*': create_subtree_multiply,
         })
 
     return create_leaf() if ls['depth'] >= gs['max_depth'] else create_node({
@@ -172,17 +188,20 @@ def create_gene_threshold():
 def create_gene_global_settings(feature_count):
     return {
         'feature_count': feature_count,
-        'max_depth': 12,
+        'max_depth': 8,
         'only_use_features_once': True,
         'unused_features': list(range(feature_count)),
         'constant_max': 1.0,
         'constant_min': -1.0,
         'odds_subtree': 1.0,
         'odds_leaf': 1.0,
-        'odds_leaf_feature': 1.0,
+        'odds_leaf_feature': 8.0,
         'odds_leaf_constant': 1.0,
+        'odds_leaf_features_sum': 1.0,
         'odds_subtree_+': 1.0,
         'odds_subtree_%': 1.0,
+        'odds_subtree_/': 1.0,
+        'odds_subtree_*': 1.0,
     }
 
 
@@ -201,32 +220,17 @@ def create_gene(feature_count):
         'type': 'root',
         'threshold': threshold,
         'children': [child],
-        'evaluate': lambda f: 1 if child['evaluate'](f) > threshold else 0,
+        'evaluate': lambda f: child['evaluate'](f) > threshold,
         'pretty': lambda: f"{child['pretty']()} < {threshold}",
     }
 
 
-def iterate_gene_child_view(gene, path=None):
-    path = path or []
-
-    if 'children' not in gene:
-        yield path, gene
-        return
-
-    for index, child in enumerate(gene['children']):
-        child_path = path + [index]
-        yield from iterate_gene_child_view(child, child_path)
-
-    yield path, gene
-    return
-
-
-def iterate_gene_parent_view(gene, depth=0):
+def iterate_gene(gene, depth=0):
     if 'children' not in gene:
         return
 
     for index, child in enumerate(gene['children']):
-        yield from iterate_gene_parent_view(child, depth + 1)
+        yield from iterate_gene(child, depth + 1)
         yield gene, index, depth
 
 
@@ -235,7 +239,8 @@ def evaluate(gene, features):
 
 
 def fitness(gene, features, labels):
-    return sum(int(evaluate(gene, f) == l) for f, l in zip(features, labels))
+    return sum(int(evaluate(gene, f) == l)
+               for f, l in zip(features, labels)) / len(features)
 
 
 def pretty(gene):
@@ -244,11 +249,11 @@ def pretty(gene):
 
 def crossover(mother, father, max_depth):
     def random_node(gene):
-        perm = list(iterate_gene_parent_view(gene))
+        perm = list(iterate_gene(gene))
         index = random.randint(0, len(perm) - 1)
         parent, child_index, depth = perm[index]
         child = parent['children'][child_index]
-        size = max((depth for *_, depth in iterate_gene_parent_view(child)), default=0)
+        size = max((depth for *_, depth in iterate_gene(child)), default=0)
         return parent['children'], child_index, size
 
     offspring_1 = copy.deepcopy(mother)
@@ -268,7 +273,7 @@ def crossover(mother, father, max_depth):
 
 def mutate(gene, mutation_chance, feature_count):
     gene = copy.deepcopy(gene)
-    for node, index, depth in iterate_gene_parent_view(gene):
+    for node, index, depth in iterate_gene(gene):
         if random.uniform(0, 1) < mutation_chance:
             global_settings = create_gene_global_settings(feature_count)
             local_settings = create_gene_local_settings()
@@ -286,6 +291,27 @@ def tournament_selection(population, fitnesses, tournament_size):
         if fitnesses[index] > winner_fitness:
             winner, winner_fitness = population[index], fitnesses[index]
     return winner
+
+
+def compress_gene(gene):
+    gene = copy.deepcopy(gene)
+
+    def all_leaf_nodes_are_constants(node):
+        return all(parent['children'][index]['type'] == 'constant'
+                   for parent, index, depth in iterate_gene(node))
+
+    for node, index, depth in iterate_gene(gene):
+        if 'children' in node['children'][index] and all_leaf_nodes_are_constants(node):
+            value = node['children'][index]['evaluate']([])
+            print('Compressed:', value, 'Old:', node['children'][index])
+            node['children'][index] = {
+                'type': 'constant',
+                'value': value,
+                'evaluate': lambda f: value,
+                'pretty': lambda: str(value),
+            }
+
+    return gene
 
 
 def main():
@@ -310,13 +336,13 @@ def main():
         fitnesses = [fitness(gene, features, labels) for gene in population]
         best_fitness = max(fitnesses)
         best = population[fitnesses.index(best_fitness)]
-        mean = sum(fitnesses) / population_size
+        mean = sum(fitnesses) / len(fitnesses)
 
         if best_fitness > overall_best_fitness:
             overall_best, overall_best_fitness = best, best_fitness
             print('New best:', overall_best_fitness, 'Gene:', pretty(overall_best))
 
-            if best_fitness == len(features):
+            if best_fitness == 1:
                 print('Model converged, best solution found on generation', generation)
                 return
 
@@ -342,6 +368,7 @@ def main():
         ]
 
         population.extend((create_gene(len(features[0])) for _ in range(50)))
+        # population = [compress_gene(gene) for gene in population]
 
 
 if __name__ == '__main__':

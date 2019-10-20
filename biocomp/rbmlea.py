@@ -5,7 +5,7 @@ from biocomp import datasets
 dataset = datasets.load_dataset_2()
 train_x, train_y, *_ = datasets.split(dataset)
 
-rule_count = 32
+rule_count = 5
 rule_size = len(train_x[0]) + 1
 gene_size = rule_size * rule_count
 population_size = 50
