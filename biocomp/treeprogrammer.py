@@ -337,8 +337,8 @@ def main():
     features, labels, *_ = datasets.split(datasets.load_dataset_1())
     population_size = 50
     generation_count = 10000
-    crossover_chance = 0.5
-    mutation_chance = 0.00125
+    crossover_chance = 0.85
+    mutation_chance = 0.0125
     tournament_size = 5
     max_depth = 4
 
