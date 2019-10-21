@@ -7,69 +7,79 @@ from typing import (
 
 from biocomp import datasets
 
-train_x, train_y, *_ = datasets.split(datasets.load_old_dataset_1())
+train_x, train_y, *_ = datasets.split(datasets.load_dataset_2())
 population_count = 50
 rule_size = len(train_x[0]) + 1
-rule_count_per_gene = 17
-gene_size = rule_size * rule_count_per_gene
+rule_count_per_chromosome = 17
+chromosome_size = rule_size * rule_count_per_chromosome
 generation_count = 10000
 tournament_size = 5
 crossover_chance = 0.85
-mutation_chance = 0.0125
+mutation_chance = 0.5 / chromosome_size
+
+mutation_difference_max_threshold = 0.10
+mutation_difference_min_threshold = 0.05
+mutation_update_size = mutation_chance / 100
 
 
-def gene_at(index, settings: Optional[Dict[Union[int, str], int]] = None):
-    if settings is None:
+def gene_by_index(index, emphasize_settings: Optional[Dict[Union[int, str], int]] = None):
+    if emphasize_settings is None:
         return random.choice(
             [0, 1, '#'] if index % rule_size != (rule_size - 1)
             else [0, 1]
         )
 
-    settings = settings.copy()
+    emphasize_settings = emphasize_settings.copy()
     if index % rule_size == (rule_size - 1):
-        del settings['#']
+        del emphasize_settings['#']
 
-    total = sum(settings.values())
+    total = sum(emphasize_settings.values())
     point = random.randint(0, total - 1)
     cumulative = 0
 
-    for key, value in settings.items():
+    for key, value in emphasize_settings.items():
         cumulative += value
         if cumulative > point:
             return key
 
 
-def create_gene():
-    return [gene_at(index) for index in range(gene_size)]
+def create_chromosome():
+    return [gene_by_index(index) for index in range(chromosome_size)]
 
 
-population = [create_gene() for _ in range(population_count)]
+population = [create_chromosome() for _ in range(population_count)]
 
 
-def evaluate(gene, features):
+def evaluate(chromosome, features):
     prediction = [0, 0]
-    for index in range(0, gene_size, rule_size):
-        *condition, label = gene[index:index + rule_size]
+    for index in range(0, chromosome_size, rule_size):
+        *condition, label = chromosome[index:index + rule_size]
         if all(p == f or p == '#' for p, f in zip(condition, features)):
             prediction[label] += 1
     return prediction.index(max(prediction))
 
 
-def fitness(gene):
-    return sum(int(evaluate(gene, features) == label)
+def fitness(chromosome):
+    return sum(int(evaluate(chromosome, features) == label)
                for features, label in zip(train_x, train_y)) / len(train_x)
 
 
 overall_best, overall_best_fitness = None, -float('inf')
 
 for generation in range(generation_count):
-    fitnesses = [fitness(gene) for gene in population]
+    fitnesses = [fitness(chromosome) for chromosome in population]
     best_fitness = max(fitnesses)
     best = population[fitnesses.index(best_fitness)]
     mean = sum(fitnesses) / len(population)
 
     if generation % 5 == 0:
-        print('Generation:', generation, 'Best:', best_fitness, 'Mean:', mean)
+        print('generation:', generation, 'Best:', best_fitness, 'Mean:', mean, 'Rate:', mutation_chance)
+
+    # if best_fitness - mean > mutation_difference_max_threshold:
+    #     mutation_chance -= mutation_update_size
+    # if best_fitness - mean < mutation_difference_min_threshold:
+    #     mutation_chance += mutation_update_size
+
 
     if overall_best_fitness < best_fitness:
         print('New best fitness:', best_fitness, 'Solution:', best)
@@ -100,25 +110,14 @@ for generation in range(generation_count):
         for _ in range(population_count - 1)
     ]
 
-    mutation_settings = {
-        cell: best.count(cell)
-        for cell in [0, 1, '#']
-    }
-
     # mutate
-    for gene in population:
-        for index in range(gene_size):
+    emphasize_modifiers = {gene: best.count(gene) for gene in [0, 1, '#']}
+    for chromosome in population:
+        for index in range(chromosome_size):
             if mutation_chance > random.random():
-                # standard
-                # gene[index] = gene_at(index)
-
-                # aggregate
-                gene[index] = gene_at(index, mutation_settings)
-
-                # positional
-                # gene[index] = gene_at(index, {
-                #     cell: 2 if best[index] == cell else 1
-                #     for cell in [0, 1, '#']
-                # })
+                chromosome[index] = gene_by_index(index, {
+                    gene: (2 if best[index] == gene else 1) * emphasize_modifiers[gene]
+                    for gene in [0, 1, '#']
+                })
 
     population.append(best)
