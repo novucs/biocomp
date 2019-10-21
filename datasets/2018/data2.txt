@@ -1,4 +1,3 @@
-64 rows x 7 variables (+ class, space separated, CR EOL)
 0000001 0
 0000011 1
 0000100 0
