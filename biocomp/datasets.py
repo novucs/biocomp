@@ -1,3 +1,4 @@
+import os
 import random
 
 
@@ -10,9 +11,13 @@ def parse_floating_point_features(features):
     # return [float(i) for i in features]
 
 
-def load_dataset(filename, parse_features):
-    with open(filename, 'r') as file:
-        contents = [line.split() for line in file.readlines()[1:] if line]
+def load_dataset(path, parse_features):
+    with open(path, 'r') as file:
+        contents = [
+            line.split()
+            for line in file.readlines()
+            if line.strip() and not line.startswith('#')
+        ]
 
     if len(contents) == 0:
         raise ValueError('Invalid dataset, no data points file contents')
@@ -22,16 +27,32 @@ def load_dataset(filename, parse_features):
     return list(zip(features, labels))
 
 
+def load_old_dataset(name, parser):
+    return load_dataset(os.path.join('datasets', '2018', name), parser)
+
+
+def load_old_dataset_1():
+    return load_old_dataset('data1.txt', parse_binary_string_features)
+
+
+def load_old_dataset_2():
+    return load_old_dataset('data2.txt', parse_binary_string_features)
+
+
+def load_old_dataset_3():
+    return load_old_dataset('data3.txt', parse_floating_point_features)
+
+
+def load_new_dataset(name, parser):
+    return load_dataset(os.path.join('datasets', '2019', name), parser)
+
+
 def load_dataset_1():
-    return load_dataset('data1.txt', parse_binary_string_features)
+    return load_new_dataset('data1.txt', parse_binary_string_features)
 
 
 def load_dataset_2():
-    return load_dataset('data2.txt', parse_binary_string_features)
-
-
-def load_dataset_3():
-    return load_dataset('data3.txt', parse_floating_point_features)
+    return load_new_dataset('data2.txt', parse_binary_string_features)
 
 
 def split(dataset, train_percent=1.0):
