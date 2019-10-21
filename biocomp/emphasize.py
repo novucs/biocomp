@@ -80,7 +80,6 @@ for generation in range(generation_count):
     # if best_fitness - mean < mutation_difference_min_threshold:
     #     mutation_chance += mutation_update_size
 
-
     if overall_best_fitness < best_fitness:
         print('New best fitness:', best_fitness, 'Solution:', best)
         overall_best, overall_best_fitness = best, best_fitness
@@ -120,4 +119,4 @@ for generation in range(generation_count):
                     for gene in [0, 1, '#']
                 })
 
-    population.append(best)
+    population.append(overall_best.copy())
