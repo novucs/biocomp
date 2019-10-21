@@ -9,15 +9,16 @@ def dot(inputs, weights):
             for i in range(step)]
 
 
-def relu(x):
-    return max(0, x)
+def activate(x):
+    return max(0, x)  # relu
+    # return 1 / (1 + math.exp(-x))  # sigmoid
 
 
 def rnn(size, inputs, weights):
     wx, wr = weights[:size], weights[size:]
     s = [0] * size
     for i in inputs:
-        s = [relu(a + b) for a, b in zip(dot([i], wx), dot(s, wr))]
+        s = [activate(a + b) for a, b in zip(dot([i], wx), dot(s, wr))]
     return s
 
 
@@ -27,7 +28,7 @@ def net():
 
     def predict(features, weights):
         a1 = rnn(rnn_size, features, weights[:rnn_weight_count])
-        a2 = relu(dot(a1, weights[rnn_weight_count:])[0])
+        a2 = activate(dot(a1, weights[rnn_weight_count:])[0])
         prediction = 1 if a2 > 0.5 else 0
         # print(a2)
         return prediction
