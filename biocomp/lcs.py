@@ -23,8 +23,9 @@ class Rule:
         self.action = action
 
     @staticmethod
-    def from_training_instance(training_instance):
+    def from_training_instance(training_instance, generalisation_rate=0.0125):
         condition = [
+            # '#' if random.random() < generalisation_rate else attribute
             random.choice([attribute, '#'])
             for attribute in training_instance.attributes
         ]
@@ -38,6 +39,7 @@ class Rule:
             random.choice([m, f]) if m == '#' or f == '#' else m
             for m, f in zip(mother.condition, father.condition)
         ]
+        # print('Mother:', mother.condition, 'Father:', father.condition, 'Offspring:', condition)
         action = mother.action
         return Rule(condition, action)
 
@@ -49,6 +51,7 @@ class Rule:
             random.choice(['#', a]) if random.random() < rate else c
             for c, a in zip(rule.condition, training_instance.attributes)
         ]
+        # print('New:', condition, 'Old:', rule.condition)
         action = rule.action
         return Rule(condition, action)
 
@@ -72,14 +75,11 @@ class Classifier:
         # when this classifier was first made
         self.birth_iteration = birth_iteration
 
-        # not sure yet
-        self.average_match_set_size = 0
-
     def accuracy(self):
         return self.correct_count / self.match_count
 
     def fitness(self):
-        return self.accuracy() ** 5
+        return self.accuracy()
 
     def subsumes(self, other):
         if self.accuracy() < other.accuracy():
@@ -105,6 +105,12 @@ class LearningClassifierSystem:
         for iteration in range(self.iterations):
             for training_instance in self.environment:
                 self.learn_from_training_instance(iteration, training_instance)
+
+            # deletion
+            max_population_size = sum(classifier.numerosity for classifier in self.population)
+            number_of_deletions = max(0, len(self.population) - max_population_size)
+            for deletion in range(number_of_deletions):
+                self.roulette_wheel_deletion()
             print('Iteration:', iteration, 'Fitness:', self.fitness(),
                   'Population Size:', len(self.population))
 
@@ -119,7 +125,8 @@ class LearningClassifierSystem:
         for classifier in matches:
             votes[classifier.rule.action] += classifier.fitness() * classifier.numerosity
 
-        prediction = max(votes.items(), key=lambda i: i[1])[0]
+        # print('Votes:', dict(votes))
+        prediction = max(votes.items(), key=lambda i: i[1], default=[random.randint(0, 1)])[0]
         return prediction
 
     def fitness(self):
@@ -132,8 +139,8 @@ class LearningClassifierSystem:
     def roulette_wheel_deletion(self):
         def probability(classifier):
             # keeps population from being overrun by few rules with large numerosities
-            return classifier.numerosity / classifier.fitness()
-            # return 1 / classifier.fitness()
+            # return classifier.numerosity / classifier.fitness()
+            return 1 / classifier.fitness()
 
         total = sum(probability(classifier) for classifier in self.population)
         index = random.uniform(0, total)
@@ -195,17 +202,17 @@ class LearningClassifierSystem:
             self.population.extend((classifier_a, classifier_b))
             self.subsumption((classifier_a, classifier_b))
 
-        # deletion
-        max_population_size = sum(classifier.numerosity for classifier in self.population)
-        number_of_deletions = max(0, len(self.population) - max_population_size)
-        for deletion in range(number_of_deletions):
-            self.roulette_wheel_deletion()
+        # for classifier in self.population:
+        #     print('\tCondition:', classifier.rule.condition,
+        #           '\tAction:', classifier.rule.action,
+        #           '\tBirth Iteration:', classifier.birth_iteration,
+        #           '\tFitness:', classifier.fitness(),
+        #           '\t')
 
     def subsumption(self, correct):
         for classifier_a, classifier_b in itertools.permutations(correct, 2):
-            if classifier_b in self.population and classifier_a.subsumes(classifier_b):
+            if classifier_b in self.population and classifier_a in self.population and classifier_a.subsumes(classifier_b):
                 self.population.remove(classifier_b)
-                self.population.append(classifier_a)
                 classifier_a.numerosity += 1
 
 
