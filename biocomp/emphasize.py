@@ -87,27 +87,29 @@ for generation in range(generation_count):
             print('Found solution on generation', generation)
             break
 
+    population_batch_size = population_count // 5
+    sorted_population = sorted(zip(population, fitnesses), key=lambda a: a[1])
+    best_batch = sorted_population[:population_batch_size]
+    random_batch = random.choices(sorted_population, k=population_batch_size)
+    parent_batch = best_batch + random_batch
 
     def select_parent():
-        fittest, fitness = None, -1
+        parent, parent_fitness = None, -1
         for i in range(tournament_size):
-            index = int(random.random() * population_count)
-            if fitnesses[index] > fitness:
-                fitness = fitnesses[index]
-                fittest = population[index]
-        return fittest.copy()
-
+            candidate, candidate_fitness = random.choice(sorted_population)
+            if candidate_fitness > parent_fitness:
+                parent, parent_fitness = candidate, candidate_fitness
+        return parent.copy()
 
     def crossover():
         mother = select_parent()
         father = select_parent()
         return [random.choice((m, f)) for m, f in zip(mother, father)]
 
-
-    population = [
-        crossover() if crossover_chance > random.random() else select_parent()
-        for _ in range(population_count - 1)
-    ]
+    # population = [crossover() for _ in range(population_batch_size - 1)] \
+    #     + [chromosome for chromosome, fitness in best_batch] \
+    #     + [chromosome for chromosome, fitness in random_batch]
+    population = [crossover() for _ in range(population_count)]
 
     # mutate
     emphasize_modifiers = {gene: best.count(gene) for gene in [0, 1, '#']}
