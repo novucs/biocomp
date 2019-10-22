@@ -3,6 +3,7 @@
 # learning classifier systems
 # dataset: attributes -> endpoint
 # michigan-style rules: condition -> action
+# todo: look into hybrid lcs and pittsburgh-style lcs
 import itertools
 import random
 from collections import defaultdict
