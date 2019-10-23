@@ -4,8 +4,6 @@ from biocomp import datasets
 
 rule_base_size = 10  # N
 learning_rate = 0.01  # β
-# todo: determine true immediate reward payoff implementation
-immediate_reward_payoff = 1  # P
 genetic_algorithm_run_chance = 0.1  # g
 mutation_chance = 0.0125  # μ
 mutation_wildcard_change_chance = 0.0125  # p#
@@ -38,27 +36,6 @@ class Rule:
     def matches(self, attributes):
         return all(c == a or c == '#' for c, a in zip(self.condition, attributes))
 
-    @staticmethod
-    def from_uniform_crossover(mother, father):
-        # coin flip between swapping specification and generalisation
-        condition = [
-            random.choice([m, f]) if m == '#' or f == '#' else m
-            for m, f in zip(mother.condition, father.condition)
-        ]
-        action = mother.action
-        return Rule(condition, action)
-
-    @staticmethod
-    def mutate(rule, training_instance):
-        # coin flip between a wildcard or whats in the training instance
-        # if the mutation check passes, otherwise retain the original gene
-        condition = [
-            random.choice(['#', a]) if random.random() < mutation_wildcard_change_chance else c
-            for c, a in zip(rule.condition, training_instance.attributes)
-        ]
-        action = rule.action
-        return Rule(condition, action)
-
 
 class YCS:  # Y Learning Classifier System
     def __init__(self):
@@ -75,6 +52,12 @@ class YCS:  # Y Learning Classifier System
             spin += rule.fitness()
             if spin >= point:
                 return rule
+
+    def single_point_crossover(self, mum, dad):
+        if random.random() > crossover_chance:
+            return mum.copy()
+        point = random.randrange(len(dad))
+        return mum[:point] + dad[point:]
 
     def train(self):
         # indicates whether to explore or exploit, alternates during training
@@ -101,17 +84,23 @@ class YCS:  # Y Learning Classifier System
             action_set = {rule for rule in match_set if rule.action == action}
 
             # reinforcement using Widrow-Hoff delta rule
+            # calculate immediate reward
+            # todo: determine immediate reward payoff implementation
+            reward = 1000 if endpoint == action else 0  # P
             for rule in action_set:
-                rule.error += learning_rate * (
-                            abs(immediate_reward_payoff - rule.payoff) - rule.error)
+                rule.error += learning_rate * (abs(reward - rule.payoff) - rule.error)
                 rule.niche_factor += learning_rate * (len(action_set) - rule.niche_factor)
-                rule.payoff += learning_rate * (immediate_reward_payoff - rule.payoff)
+                rule.payoff += learning_rate * (reward - rule.payoff)
 
             # genetic algorithm
             if explore and random.random() < genetic_algorithm_run_chance:
                 # selection
-                mother = self.roulette_wheel_selection(action_set)
-                father = self.roulette_wheel_selection(action_set)
+                # todo: confirm which rule set the parents are selected from
+                mum = self.roulette_wheel_selection(action_set)
+                dad = self.roulette_wheel_selection(action_set)
 
                 # crossover
+                offspring_rule_1 = self.single_point_crossover(mum.rule, dad.rule)
+                offspring_rule_2 = self.single_point_crossover(dad.rule, mum.rule)
 
+                # mutation
