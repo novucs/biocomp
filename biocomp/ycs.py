@@ -1,3 +1,4 @@
+import itertools
 import random
 
 from biocomp import datasets
@@ -6,11 +7,35 @@ rule_base_size = 10  # N
 learning_rate = 0.01  # β
 genetic_algorithm_run_chance = 0.1  # g
 mutation_chance = 0.0125  # μ
-mutation_wildcard_change_chance = 0.0125  # p#
+generalisation_rate = 0.0125  # p#
 crossover_chance = 0.75  # χ
 
 # environment
 train_x, train_y, *_ = datasets.split(datasets.load_dataset_1())
+
+
+def roulette_wheel_selection(population, key=lambda i: i.fitness):
+    total = sum(key(individual) for individual in population)
+    point = random.uniform(0, total)
+    spin = 0
+    for index, individual in enumerate(population):
+        spin += key(individual)
+        if spin >= point:
+            return individual, index
+
+
+def single_point_crossover(mum, dad):
+    if random.random() > crossover_chance:
+        return mum.copy()
+    point = random.randrange(len(dad))
+    return mum[:point] + dad[point:]
+
+
+def mutate(condition):
+    return [
+        '#' if random.random() < generalisation_rate else c
+        for c in condition
+    ]
 
 
 class Rule:
@@ -30,11 +55,20 @@ class Rule:
         # average size of niches (action sets) in which the rule participates (σ)
         self.niche_factor = 10.0
 
+    @property
     def fitness(self):
         return 1 / (self.error + 1)
 
     def matches(self, attributes):
         return all(c == a or c == '#' for c, a in zip(self.condition, attributes))
+
+
+def act(match_set):
+    payoffs = {}
+    for rule in match_set:
+        payoffs[rule.action] = payoffs.get(rule.action, 0) + rule.payoff
+    action = max(payoffs.items(), key=lambda p: p[1])[0]
+    return action
 
 
 class YCS:  # Y Learning Classifier System
@@ -44,20 +78,22 @@ class YCS:  # Y Learning Classifier System
             for _, x, y in zip(range(rule_base_size), train_x, train_y)
         ]
 
-    def roulette_wheel_selection(self, population):
-        total = sum(rule.fitness() for rule in population)
-        point = random.uniform(0, total)
-        spin = 0
-        for rule in population:
-            spin += rule.fitness()
-            if spin >= point:
-                return rule
+    def replace_into_population(self, individual):
+        old, index = roulette_wheel_selection(
+            self.rulebase, key=lambda i: 1 / i.niche_factor)
+        self.rulebase[index] = individual
 
-    def single_point_crossover(self, mum, dad):
-        if random.random() > crossover_chance:
-            return mum.copy()
-        point = random.randrange(len(dad))
-        return mum[:point] + dad[point:]
+    def accuracy(self):
+        correct = 0
+        for attributes, endpoint in zip(train_x, train_y):
+            match_set = {rule for rule in self.rulebase if rule.matches(attributes)}
+            if len(match_set) == 0:
+                correct += random.randint(0, 1)
+                continue
+            action = act(match_set)
+            if action == endpoint:
+                correct += 1
+        return correct / len(train_x)
 
     def train(self):
         # indicates whether to explore or exploit, alternates during training
@@ -69,6 +105,17 @@ class YCS:  # Y Learning Classifier System
         for attributes, endpoint in zip(train_x, train_y):
             match_set = {rule for rule in self.rulebase if rule.matches(attributes)}
 
+            if len(match_set) == 0:
+                # covering
+                condition = mutate(attributes)
+                # todo: why did larry suggest using a random action instead of
+                #  the endpoint?
+                # action = endpoint
+                action = random.choice((0, 1))
+                individual = Rule(condition, action)
+                self.replace_into_population(individual)
+                continue
+
             # select action
             explore = not explore  # alternate between exploring and exploiting
             if explore:
@@ -76,10 +123,7 @@ class YCS:  # Y Learning Classifier System
                 action = random.choice([0, 1])
             else:
                 # exploit: take action with maximum average payoff
-                payoffs = {}
-                for rule in match_set:
-                    payoffs[rule.action] = payoffs.get(rule.action) + rule.payoff
-                action = max(payoffs.items(), key=lambda p: p[1])[0]
+                action = act(match_set)
 
             action_set = {rule for rule in match_set if rule.action == action}
 
@@ -93,14 +137,28 @@ class YCS:  # Y Learning Classifier System
                 rule.payoff += learning_rate * (reward - rule.payoff)
 
             # genetic algorithm
-            if explore and random.random() < genetic_algorithm_run_chance:
+            if explore and len(action_set) > 0 and random.random() < genetic_algorithm_run_chance:
                 # selection
                 # todo: confirm which rule set the parents are selected from
-                mum = self.roulette_wheel_selection(action_set)
-                dad = self.roulette_wheel_selection(action_set)
+                mum, _ = roulette_wheel_selection(action_set)
+                dad, _ = roulette_wheel_selection(action_set)
 
-                # crossover
-                offspring_rule_1 = self.single_point_crossover(mum.rule, dad.rule)
-                offspring_rule_2 = self.single_point_crossover(dad.rule, mum.rule)
+                for mum, dad in itertools.permutations((mum, dad), 2):
+                    condition = single_point_crossover(mum.condition, dad.condition)
+                    # todo: check whether mutation chance should be applied per attribute
+                    if random.random() < mutation_chance:
+                        condition = mutate(condition)
+                    offspring = Rule(condition, action)
+                    self.replace_into_population(offspring)
 
-                # mutation
+        print(self.accuracy())
+
+
+def main():
+    ycs = YCS()
+    for _ in range(1000):
+        YCS().train()
+
+
+if __name__ == '__main__':
+    main()
