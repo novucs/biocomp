@@ -12,7 +12,7 @@ crossover_chance = 0.75  # χ
 # todo: understand why payoffs are different for each case in larry's
 #  implementation, when it could just be something like:
 #  payoff = 1000 if correct else 0
-payoffs = {  # P
+rewards = {  # P
     # key:
     #  (input, action): payoff
     (1, 1): 1000,
@@ -144,12 +144,19 @@ class YCS:  # Y Learning Classifier System
 
             # reinforcement using Widrow-Hoff delta rule
             # calculate immediate reward
-            # todo: determine immediate reward payoff implementation
-            reward = payoffs[(endpoint, action)]  # P
+            reward = rewards[(endpoint, action)]  # P
             for rule in action_set:
-                rule.error += learning_rate * (abs(reward - rule.payoff) - rule.error)
-                rule.niche_factor += learning_rate * (len(action_set) - rule.niche_factor)
-                rule.payoff += learning_rate * (reward - rule.payoff)
+                # todo: the parameters here do not seem very well normalised so
+                #  updates are probably going to be quite unstable
+                error = learning_rate * (abs(reward - rule.payoff) - rule.error)
+                niche = learning_rate * (len(action_set) - rule.niche_factor)
+                payoff = learning_rate * (reward - rule.payoff)
+                # print('Error:', error, '\tNiche:', niche, '\tPayoff:', payoff)
+                # print('Error:', rule.error, '\tNiche', rule.niche_factor,
+                #       '\tPayoff:', rule.payoff)
+                rule.error += error
+                rule.niche_factor += niche
+                rule.payoff += payoff
 
             # genetic algorithm
             # todo: should this genetic algorithm be ran under a different
