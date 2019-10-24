@@ -79,10 +79,10 @@ class Rule:
 
 
 def greedy_act(match_set):
-    payoffs = {}
+    votes = {}
     for rule in match_set:
-        payoffs[rule.action] = payoffs.get(rule.action, 0) + rule.payoff
-    action = max(payoffs.items(), key=lambda p: p[1])[0]
+        votes[rule.action] = votes.get(rule.action, 0) + rule.payoff
+    action = max(votes.items(), key=lambda p: p[1])[0]
     return action
 
 
