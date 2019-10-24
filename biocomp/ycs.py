@@ -5,7 +5,7 @@ from biocomp import datasets
 
 rule_base_size = 60  # N
 learning_rate = 0.2  # β
-ga_chance = 0.1  # g
+ga_chance = 0.25  # g
 mutation_chance = 0.0125  # μ
 generalisation_rate = 0.0125  # p#
 crossover_chance = 0.75  # χ
