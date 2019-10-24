@@ -3,12 +3,27 @@ import random
 
 from biocomp import datasets
 
-rule_base_size = 10  # N
-learning_rate = 0.01  # β
-genetic_algorithm_run_chance = 0.1  # g
+rule_base_size = 60  # N
+learning_rate = 0.2  # β
+ga_chance = 0.1  # g
 mutation_chance = 0.0125  # μ
 generalisation_rate = 0.0125  # p#
 crossover_chance = 0.75  # χ
+# todo: understand why payoffs are different for each case in larry's
+#  implementation, when it could just be something like:
+#  payoff = 1000 if correct else 0
+payoffs = {  # P
+    # key:
+    #  (input, action): payoff
+    (1, 1): 1000,
+    (1, 0): 800,
+    (0, 1): 1000,
+    (0, 0): 3000,
+    # todo: input may never be '#' in our example, is this here for partially
+    #  observable environments, or something else entirely?
+    ('#', 0): 1900,
+    ('#', 1): 1000,
+}
 
 # environment
 train_x, train_y, *_ = datasets.split(datasets.load_dataset_1())
@@ -63,7 +78,7 @@ class Rule:
         return all(c == a or c == '#' for c, a in zip(self.condition, attributes))
 
 
-def act(match_set):
+def greedy_act(match_set):
     payoffs = {}
     for rule in match_set:
         payoffs[rule.action] = payoffs.get(rule.action, 0) + rule.payoff
@@ -74,7 +89,7 @@ def act(match_set):
 class YCS:  # Y Learning Classifier System
     def __init__(self):
         self.rulebase = [
-            Rule(('#' if random.random() < mutation_chance else a for a in x), y)
+            Rule(mutate(x), y)
             for _, x, y in zip(range(rule_base_size), train_x, train_y)
         ]
 
@@ -90,7 +105,7 @@ class YCS:  # Y Learning Classifier System
             if len(match_set) == 0:
                 correct += random.randint(0, 1)
                 continue
-            action = act(match_set)
+            action = greedy_act(match_set)
             if action == endpoint:
                 correct += 1
         return correct / len(train_x)
@@ -123,21 +138,23 @@ class YCS:  # Y Learning Classifier System
                 action = random.choice([0, 1])
             else:
                 # exploit: take action with maximum average payoff
-                action = act(match_set)
+                action = greedy_act(match_set)
 
             action_set = {rule for rule in match_set if rule.action == action}
 
             # reinforcement using Widrow-Hoff delta rule
             # calculate immediate reward
             # todo: determine immediate reward payoff implementation
-            reward = 1000 if endpoint == action else 0  # P
+            reward = payoffs[(endpoint, action)]  # P
             for rule in action_set:
                 rule.error += learning_rate * (abs(reward - rule.payoff) - rule.error)
                 rule.niche_factor += learning_rate * (len(action_set) - rule.niche_factor)
                 rule.payoff += learning_rate * (reward - rule.payoff)
 
             # genetic algorithm
-            if explore and len(action_set) > 0 and random.random() < genetic_algorithm_run_chance:
+            # todo: should this genetic algorithm be ran under a different
+            #  context? i.e. outside the environment sampling loop
+            if explore and len(action_set) > 0 and random.random() < ga_chance:
                 # selection
                 # todo: confirm which rule set the parents are selected from
                 mum, _ = roulette_wheel_selection(action_set)
@@ -151,13 +168,12 @@ class YCS:  # Y Learning Classifier System
                     offspring = Rule(condition, action)
                     self.replace_into_population(offspring)
 
-        print(self.accuracy())
-
 
 def main():
     ycs = YCS()
-    for _ in range(1000):
-        YCS().train()
+    for iteration in range(1000):
+        ycs.train()
+        print('Iteration:', iteration, 'Accuracy:', ycs.accuracy())
 
 
 if __name__ == '__main__':
