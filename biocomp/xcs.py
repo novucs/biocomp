@@ -1,10 +1,11 @@
 # Implementation of XCS as is defined in the paper:
 # "An Algorithmic Description of XCS" by Martin V. Butz and Stewart W. Wilson.
+import copy
 import random
 
 from biocomp import datasets
 
-train_x, train_y, test_x, test_y = datasets.split(datasets.load_dataset_1())
+train_x, train_y, test_x, test_y = datasets.split(datasets.load_dataset_1(), 0.9)
 action_space = set(train_y)
 
 # XCS hyperparameters
@@ -57,10 +58,16 @@ class Classifier:  # cl
         # the average size of the action sets this classifier has belonged to
         self.niche = 1.0  # as
         # number of macro classifiers this classifier represents
-        self.numerosity = 1.0  # num
+        self.numerosity = 1  # num
 
     def matches(self, attributes):
         return all(c == a or c == '#' for c, a in zip(self.condition, attributes))
+
+    def could_subsume(self):
+        if self.experience > subsumption_threshold:
+            if self.error < error_clip:
+                return True
+        return False
 
     def is_more_general_than(self, other):
         if self.condition.count('#') <= other.condition.count('#'):
@@ -69,6 +76,10 @@ class Classifier:  # cl
             if attribute_a != '#' and attribute_a != attribute_b:
                 return False
         return True
+
+    def does_subsume(self, other):
+        return self.action == other.action and self.could_subsume() \
+               and self.is_more_general_than(other)
 
 
 class XCS:
@@ -109,7 +120,7 @@ class XCS:
             '#' if random.random() < generalisation_probability else attribute
             for attribute in attributes
         ]
-        action = random.choice(action_space - {c.action for c in match_set})
+        action = random.choice(list(action_space - {c.action for c in match_set}))
         return Classifier(condition, action, self.actual_time)
 
     def generate_match_set(self, attributes):
@@ -144,7 +155,7 @@ class XCS:
 
     def select_action(self, prediction_array):
         if random.random() < exploration_probability:
-            return random.choice(prediction_array.keys())
+            return random.choice(list(prediction_array.keys()))
         else:
             action, value = max(prediction_array.items(), key=lambda x: x[1])
             return action
@@ -172,23 +183,17 @@ class XCS:
                     accuracy_sum * classifier.numerosity / accuracy_sum - classifier.fitness
             )
 
-    def could_subsume(self, classifier):
-        if classifier.experience > subsumption_threshold:
-            if classifier.error < error_clip:
-                return True
-        return False
-
     def do_action_set_subsumption(self, action_set, population):
         subsumer, subsumer_generals = None, None
         for classifier in action_set:
-            if self.could_subsume(classifier):
+            if classifier.could_subsume():
                 generals = classifier.condition.count('#')
                 if subsumer is None or generals > subsumer_generals or \
                         (generals == subsumer_generals and random.choice([True, False])):
                     subsumer = classifier
                     subsumer_generals = generals
         if subsumer is not None:
-            for classifier in action_set:
+            for classifier in list(action_set):
                 if subsumer.is_more_general_than(classifier):
                     subsumer.numerosity += classifier.numerosity
                     action_set.remove(classifier)
@@ -216,6 +221,45 @@ class XCS:
         if do_action_set_subsumption:
             self.do_action_set_subsumption(action_set, population)
 
+    def select_offspring(self, action_set):
+        fitness_sum = sum(c.fitness for c in action_set)
+        choice_point = random.random() * fitness_sum
+        cumulative = 0
+        for classifier in action_set:
+            cumulative += classifier.fitness
+            if cumulative > choice_point:
+                return classifier
+
+    def apply_crossover(self, c1, c2):
+        x = random.random() * (len(c1.condition) + 1)
+        y = random.random() * (len(c1.condition) + 1)
+        if x > y:
+            x, y = y, x
+        i = 0
+        c1.condition = [cd2 if x <= i < y else cd1 for cd1, cd2 in zip(c1.condition, c2.condition)]
+        c2.condition = [cd1 if x <= i < y else cd2 for cd1, cd2 in zip(c1.condition, c2.condition)]
+
+    def apply_mutation(self, classifier, attributes):
+        i = 0
+        while True:
+            if random.random() < mutation_probability:
+                if classifier.condition[i] == '#':
+                    classifier.condition[i] = attributes[i]
+                else:
+                    classifier.condition[i] = '#'
+            i += 1
+            if i < len(classifier.condition):
+                break
+        if random.random() < mutation_probability:
+            classifier.action = random.choice(list(action_space))
+
+    def insert_in_population(self, classifier, population):
+        for c in population:
+            if c.condition == classifier.condition and c.action == classifier.action:
+                c.numerosity += 1
+                return
+        population.append(classifier)
+
     def run_ga(self, action_set, attributes, population):
         sum_last_ga = sum(c.last_in_ga * c.numerosity for c in action_set)
         action_set_numerosity = sum(c.numerosity for c in action_set)
@@ -224,7 +268,28 @@ class XCS:
                 classifier.last_in_ga = self.actual_time
             parent_1 = self.select_offspring(action_set)
             parent_2 = self.select_offspring(action_set)
-            # todo: complete this
+            child_1 = copy.deepcopy(parent_1)
+            child_2 = copy.deepcopy(parent_2)
+            if random.random() < crossover_probability:
+                self.apply_crossover(child_1, child_2)
+                for child in (child_1, child_2):
+                    child.payoff = (parent_1.payoff + parent_2.payoff) / 2
+                    child.error = (parent_1.error + parent_2.error) / 2
+                    child.fitness = (parent_1.fitness + parent_2.fitness) / 2
+            child_1.fitness *= 0.1
+            child_2.fitness *= 0.1
+            for child in (child_1, child_2):
+                self.apply_mutation(child, attributes)
+                if do_ga_subsumption:
+                    if parent_1.does_subsume(child):
+                        parent_1.numerosity += 1
+                    elif parent_2.does_subsume(child):
+                        parent_2.numerosity += 1
+                    else:
+                        self.insert_in_population(child, population)
+                else:
+                    self.insert_in_population(child, population)
+                self.delete_from_population(population)
 
     def run_experiment(self):
         previous_action_set = []  # [A]-1
@@ -240,9 +305,40 @@ class XCS:
 
             # immediate reward
             reward = maximum_reward if action == endpoint else minimum_reward  # ρ
+            end_of_problem = True  # this is a
 
             if len(previous_action_set) > 0:
                 payoff = previous_reward * discount * max(prediction_array.values())  # P
                 self.update_set(action_set, payoff, self.population)
                 self.run_ga(action_set, previous_attributes, self.population)
-                # todo: complete this
+            if end_of_problem:
+                payoff = reward
+                self.update_set(action_set, payoff, self.population)
+                self.run_ga(action_set, attributes, self.population)
+                previous_action_set = []
+            else:
+                previous_action_set = action_set
+                previous_reward = reward
+                previous_attributes = attributes
+
+    def fitness(self):
+        target = 0
+        for attributes, endpoint in zip(train_x, train_y):
+            self.actual_time += 1
+            match_set = self.generate_match_set(attributes)  # [M]
+            prediction_array = self.generate_prediction_array(match_set)  # PA
+            action = self.select_action(prediction_array)  # act
+            if action == endpoint:
+                target += 1
+        return target / len(train_x)
+
+
+def main():
+    xcs = XCS()
+    for iteration in range(1000):
+        xcs.run_experiment()
+        print('Iteration:', iteration, 'Fitness:', xcs.fitness(), 'Population size:', len(xcs.population))
+
+
+if __name__ == '__main__':
+    main()
