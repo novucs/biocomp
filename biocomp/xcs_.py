@@ -10,29 +10,30 @@ action_space = set(train_y)
 
 # XCS hyperparameters
 condition_size = len(train_x[0])  # L
-maximum_population_size = len(train_x)  # N
-learning_rate = 0.2  # β
+max_population_size = 200  # N
+learning_rate = 0.15  # β
+accuracy_coefficient = 0.1  # α
 # discount factor, only for multi-step problems
-discount = 0.71  # γ
+discount_factor = 0.71  # γ
 # specifies frequency of GA executions (by average last ga usage in population)
 # often between 25-50
-ga_threshold = 25  # θGA
-crossover_probability = 0.85  # χ
-mutation_probability = 0.0125  # μ
+ga_threshold = 35  # θGA
+crossover_probability = 0.75  # χ
+mutation_probability = 0.03  # μ
 # if classifier experience > threshold, its fitness may be considered in the
 # deletion process
 deletion_threshold = 20  # θdel
-deletion_fitness_threshold = 0.1  # δ
+fitness_threshold = 0.1  # δ
 subsumption_threshold = 20  # θsub
 # probability of using a # attribute during covering
-generalisation_probability = 0.33  # P#
-initial_payoff = 0.0  # pI
-initial_error = 0.0  # εI
-initial_fitness = 0.0  # fI
+wildcard_probability = 0.33  # P#
+initial_prediction = 0.00001  # pI
+initial_error = 0.00001  # εI
+initial_fitness = 0.00001  # fI
 exploration_probability = 0.5  # pexplr
 covering_threshold = len(action_space)  # θmna
-do_ga_subsumption = True
-do_action_set_subsumption = True
+do_ga_subsumption = False
+do_action_set_subsumption = False
 
 # reinforcement program hyperparameters
 maximum_reward = 1000
@@ -47,7 +48,7 @@ class Classifier:  # cl
     def __init__(self, condition, action, created):
         self.condition = condition  # C
         self.action = action  # A
-        self.payoff = initial_payoff  # p
+        self.payoff = initial_prediction  # p
         self.error = initial_error  # ε
         self.fitness = initial_fitness  # f
         # number of times this classifier has been in an action set
@@ -91,13 +92,13 @@ class XCS:
         vote = classifier.niche * classifier.numerosity
         single_fitness = classifier.fitness / classifier.numerosity
         if classifier.experience > deletion_threshold \
-                and single_fitness < deletion_fitness_threshold * mean_fitness:
+                and single_fitness < fitness_threshold * mean_fitness:
             vote *= mean_fitness / single_fitness
         return vote
 
     def delete_from_population(self, population):
         population_size = sum(c.numerosity for c in population)
-        if population_size <= maximum_population_size:
+        if population_size <= max_population_size:
             return
         mean_fitness = sum(c.fitness for c in population) / population_size
         vote_sum = sum(
@@ -117,7 +118,7 @@ class XCS:
 
     def generate_covering_classifier(self, match_set, attributes):
         condition = [
-            '#' if random.random() < generalisation_probability else attribute
+            '#' if random.random() < wildcard_probability else attribute
             for attribute in attributes
         ]
         action = random.choice(list(action_space - {c.action for c in match_set}))
@@ -168,7 +169,6 @@ class XCS:
         }
 
     def update_fitness(self, action_set):
-        alpha = 0.1  # α
         power = 5  # v
 
         accuracy_vector = []  # k
@@ -176,7 +176,7 @@ class XCS:
             if classifier.error < error_clip:
                 accuracy_vector.append(1)
             else:
-                accuracy_vector.append(alpha * ((classifier.error / error_clip) ** power))
+                accuracy_vector.append(accuracy_coefficient * ((classifier.error / error_clip) ** power))
         accuracy_sum = sum(accuracy_vector)
         for classifier, accuracy in zip(action_set, accuracy_vector):
             classifier.fitness += learning_rate * (
@@ -308,7 +308,7 @@ class XCS:
             end_of_problem = True  # this is a
 
             if len(previous_action_set) > 0:
-                payoff = previous_reward * discount * max(prediction_array.values())  # P
+                payoff = previous_reward * discount_factor * max(prediction_array.values())  # P
                 self.update_set(action_set, payoff, self.population)
                 self.run_ga(action_set, previous_attributes, self.population)
             if end_of_problem:
@@ -335,7 +335,7 @@ class XCS:
 
 def main():
     xcs = XCS()
-    for iteration in range(1000):
+    for iteration in range(100000):
         xcs.run_experiment()
         print('Iteration:', iteration, 'Fitness:', xcs.fitness(), 'Population size:', len(xcs.population))
 
