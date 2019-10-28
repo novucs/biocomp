@@ -144,7 +144,8 @@ class YCS:  # Y Learning Classifier System
 
             # reinforcement using Widrow-Hoff delta rule
             # calculate immediate reward
-            reward = rewards[(endpoint, action)]  # P
+            # reward = rewards[(endpoint, action)]  # P
+            reward = 1000 if endpoint == action else 0  # P
             for rule in action_set:
                 # todo: the parameters here do not seem very well normalised so
                 #  updates are probably going to be quite unstable
