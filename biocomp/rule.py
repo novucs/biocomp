@@ -5,9 +5,9 @@ from biocomp import datasets
 dataset = datasets.load_dataset_2()
 train_x, train_y, *_ = datasets.split(dataset)
 
-rule_count = 5
+rule_count = len(train_x)
 rule_size = len(train_x[0]) + 1
-gene_size = rule_size * rule_count
+chromosome_size = rule_size * rule_count
 population_size = 50
 generation_count = 10000
 crossover_chance = 0.5
@@ -15,47 +15,53 @@ mutation_chance = 0.0125
 tournament_size = 5
 
 
-def random_gene(index):
+def random_chromosome(index):
     return random.choice([0, 1, '#'] if index % rule_size != (rule_size - 1) else [0, 1])
     # return random.choice([0, 1])
 
 
 population = [
-    [random_gene(i) for i in range(rule_size * rule_count)]
+    [random_chromosome(i) for i in range(rule_size * rule_count)]
     for _ in range(population_size)
 ]
 
 
-def evaluate(gene, features):
+def evaluate(chromosome, features):
     final_prediction = [0, 0]
-    for index in range(0, gene_size, rule_size):
-        *rule, prediction = gene[index: index + rule_size]
+    for index in range(0, chromosome_size, rule_size):
+        *rule, prediction = chromosome[index: index + rule_size]
         if all(p == f or p == "#" for p, f in zip(rule, features)):
             final_prediction[prediction] += 1
     return final_prediction.index(max(final_prediction))
 
 
-def fitness(gene, features, labels):
-    return sum(1 if evaluate(gene, f) == l else 0
+def fitness(chromosome, features, labels):
+    return sum(1 if evaluate(chromosome, f) == l else 0
                for f, l in zip(features, labels)) / len(labels)
 
 
+overall_best, overall_best_fitness = None, -float('inf')
+
 for generation in range(generation_count):
-    population_fitness = [fitness(gene, train_x, train_y) for gene in population]
+    population_fitness = [fitness(chromosome, train_x, train_y) for chromosome in population]
     best_fitness = max(population_fitness)
-    best_gene_index = population_fitness.index(best_fitness)
-    best_gene = population[best_gene_index]
+    best_index = population_fitness.index(best_fitness)
+    best = population[best_index]
     total_fitness = sum(population_fitness)
     mean_fitness = total_fitness / population_size
 
-    if best_fitness == 1.0:
-        print('Found solution in', generation, 'generations:')
-        for rule_id, index in enumerate(range(0, gene_size, rule_size)):
-            *rule, prediction = best_gene[index: index + rule_size]
-            print(f'\tRule #{rule_id + 1}', rule, ':', prediction)
-        break
+    if best_fitness > overall_best_fitness:
+        print('new overall best:', best)
+        overall_best, overall_best_fitness = best, best_fitness
 
-    print('best:', best_fitness, 'mean:', mean_fitness)
+        if best_fitness == 1.0:
+            print('Found solution in', generation, 'generations:')
+            for rule_id, index in enumerate(range(0, chromosome_size, rule_size)):
+                *rule, prediction = best[index: index + rule_size]
+                print(f'\tRule #{rule_id + 1}', rule, ':', prediction)
+            break
+
+    print('generation', generation, 'best:', best_fitness, 'mean:', mean_fitness)
 
 
     def select_parent():
@@ -77,9 +83,9 @@ for generation in range(generation_count):
     population = [crossover() for _ in range(population_size - 1)]
 
     # mutate
-    for gene in population:
-        for index in range(gene_size):
-            if mutation_chance > random.random():
-                gene[index] = random_gene(index)
+    for chromosome in population:
+        for index in range(chromosome_size):
+            if mutation_chance > random.random() and index % rule_size != (rule_size - 1):
+                chromosome[index] = random_chromosome(index)
 
-    population.append(best_gene)
+    population.append(best)
