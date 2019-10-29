@@ -5,7 +5,7 @@ from biocomp import datasets
 dataset = datasets.load_dataset_2()
 train_x, train_y, *_ = datasets.split(dataset)
 
-rule_count = len(train_x)
+rule_count = 30
 rule_size = len(train_x[0]) + 1
 chromosome_size = rule_size * rule_count
 population_size = 50
@@ -31,11 +31,16 @@ def evaluate(chromosome, features):
     for index in range(0, chromosome_size, rule_size):
         *rule, prediction = chromosome[index: index + rule_size]
         if all(p == f or p == "#" for p, f in zip(rule, features)):
-            final_prediction[prediction] += 1
-    return final_prediction.index(max(final_prediction))
+            return prediction
+    # print(final_prediction)
+    return 0
+    # return 0
 
 
 def fitness(chromosome, features, labels):
+    # for f, l in zip(features, labels):
+    #     prediction = bool(evaluate(chromosome, f))
+    #     print(f, l, prediction, '<---' if prediction != l else '')
     return sum(1 if evaluate(chromosome, f) == l else 0
                for f, l in zip(features, labels)) / len(labels)
 
@@ -43,7 +48,16 @@ def fitness(chromosome, features, labels):
 overall_best, overall_best_fitness = None, -float('inf')
 
 for generation in range(generation_count):
+    # population = [[
+    #     0, 0,  '#', '#', '#', 1, 1,
+    #     1, 1, 1,  '#', '#', '#', 1,
+    #     0, 1,  '#', '#', 1, '#', 1,
+    #     1, 0,  '#', 1, '#', '#', 1,
+    #     '#', '#', '#', '#', '#', '#', 0,
+    # ]]
+    # population = [[1, 1, 1, '#', '#', '#', 1, 0, 0, '#', '#', '#', 1, 1, 0, 1, 0, '#', 1, '#', 1, 1, 0, '#', 1, '#', '#', 1, '#', 1, 1, '#', 1, '#', 1]]
     population_fitness = [fitness(chromosome, train_x, train_y) for chromosome in population]
+    # break
     best_fitness = max(population_fitness)
     best_index = population_fitness.index(best_fitness)
     best = population[best_index]

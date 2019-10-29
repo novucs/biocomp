@@ -3,11 +3,11 @@ import random
 
 from biocomp import datasets
 
-rule_base_size = 60  # N
+rule_base_size = 400  # N
 learning_rate = 0.2  # β
 ga_chance = 0.25  # g
-mutation_chance = 0.0125  # μ
-generalisation_rate = 0.0125  # p#
+mutation_chance = 0.01  # μ
+wildcard_probability = 0.66  # p#
 crossover_chance = 0.75  # χ
 # todo: understand why payoffs are different for each case in larry's
 #  implementation, when it could just be something like:
@@ -48,9 +48,25 @@ def single_point_crossover(mum, dad):
 
 def mutate(condition):
     return [
-        '#' if random.random() < generalisation_rate else c
+        '#' if random.random() < mutation_chance else c
         for c in condition
     ]
+
+
+def generate_covering_rule(condition):
+    return [
+        '#' if random.random() < wildcard_probability else c
+        for c in condition
+    ]
+
+
+def generate_rule():
+    condition = [
+        '#' if random.random() < wildcard_probability else random.choice((0, 1))
+        for _ in range(len(train_x[0]))
+    ]
+    action = random.choice((0, 1))
+    return Rule(condition, action)
 
 
 class Rule:
@@ -88,14 +104,11 @@ def greedy_act(match_set):
 
 class YCS:  # Y Learning Classifier System
     def __init__(self):
-        self.rulebase = [
-            Rule(mutate(x), y)
-            for _, x, y in zip(range(rule_base_size), train_x, train_y)
-        ]
+        self.rulebase = [generate_rule() for _ in zip(range(rule_base_size))]
 
     def replace_into_population(self, individual):
         old, index = roulette_wheel_selection(
-            self.rulebase, key=lambda i: 1 / i.niche_factor)
+            self.rulebase, key=lambda i: i.niche_factor)
         self.rulebase[index] = individual
 
     def accuracy(self):
@@ -127,8 +140,9 @@ class YCS:  # Y Learning Classifier System
                 #  the endpoint?
                 # action = endpoint
                 action = random.choice((0, 1))
-                individual = Rule(condition, action)
+                individual = Rule(generate_covering_rule(condition), action)
                 self.replace_into_population(individual)
+                print('covering', [c.condition for c in self.rulebase])
                 continue
 
             # select action
@@ -160,20 +174,19 @@ class YCS:  # Y Learning Classifier System
                 rule.payoff += payoff
 
             # genetic algorithm
-            # todo: should this genetic algorithm be ran under a different
-            #  context? i.e. outside the environment sampling loop
             if explore and len(action_set) > 0 and random.random() < ga_chance:
                 # selection
                 # todo: confirm which rule set the parents are selected from
-                mum, _ = roulette_wheel_selection(action_set)
-                dad, _ = roulette_wheel_selection(action_set)
+                mum, _ = roulette_wheel_selection(self.rulebase, key=lambda x: 1 / x.error)
+                dad, _ = roulette_wheel_selection(self.rulebase, key=lambda x: 1 / x.error)
 
                 for mum, dad in itertools.permutations((mum, dad), 2):
                     condition = single_point_crossover(mum.condition, dad.condition)
-                    # todo: check whether mutation chance should be applied per attribute
-                    if random.random() < mutation_chance:
-                        condition = mutate(condition)
+                    condition = mutate(condition)
                     offspring = Rule(condition, action)
+                    offspring.error = (mum.error + dad.error) / 2
+                    offspring.niche_factor = (mum.niche_factor + dad.niche_factor) / 2
+                    offspring.payoff = (mum.payoff + dad.payoff) / 2
                     self.replace_into_population(offspring)
 
 
