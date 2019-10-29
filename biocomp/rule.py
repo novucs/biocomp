@@ -4,14 +4,31 @@ import random
 from biocomp import datasets
 
 
+# class Rule:
+#     def __init__(self, condition, action):
+#         self.condition = condition
+#         self.action = action
+#
+#
+# class Individual:
+#     def __init__(self):
+#         self.rulebase = []
+#
+#     def crossover(self, other):
+#         pass
+#
+#     def mutate(self):
+#         pass
+
+
 class GA:
     def __init__(self):
-        self.dataset = 'datasets/2019/data2.txt'
+        self.dataset = 'datasets/2019/data1.txt'
         train_x, train_y, *_ = datasets.split(
             datasets.load_dataset(self.dataset, datasets.parse_binary_string_features))
         self.rule_count = len(train_x)
         self.rule_size = len(train_x[0]) + 1
-        self.population_size = 100
+        self.population_size = 50
         self.generation_count = 10000
         self.crossover_chance = 0.5
         self.tournament_size = 5
@@ -22,6 +39,7 @@ class GA:
         self.overall_best = None
         self.overall_best_fitness = -float('inf')
         self.generation = 0
+        self.checkpoint_fitness = False
 
     @property
     def chromosome_size(self):
@@ -48,7 +66,11 @@ class GA:
                 same_dataset = tags['dataset'] == self.dataset
                 better_rule_count = int(tags['rule_count']) < best_rule_count
                 equal_rule_count = int(tags['rule_count']) == best_rule_count
-                better_fitness = equal_rule_count and float(tags['fitness']) < best_fitness
+
+                if self.checkpoint_fitness:
+                    better_fitness = equal_rule_count and float(tags['fitness']) < best_fitness
+                else:
+                    better_fitness = better_rule_count and float(tags['fitness']) == 1.0
 
                 if same_dataset and (better_rule_count or better_fitness):
                     best = list(map(lambda k: '#' if k == '#' else int(float(k)),
@@ -180,6 +202,9 @@ class GA:
         return True
 
     def save_solution(self, best, fitness):
+        if fitness < 1.0 and not self.checkpoint_fitness:
+            return
+
         with open('solutions.txt', 'a') as f:
             f.write(
                 f'dataset:{self.dataset} '
