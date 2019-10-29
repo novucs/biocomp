@@ -3,10 +3,10 @@ import random
 
 from biocomp import datasets
 
-rule_base_size = 400  # N
+rule_base_size = 1000  # N
 learning_rate = 0.2  # β
-ga_chance = 0.25  # g
-mutation_chance = 0.01  # μ
+ga_chance = 0.05  # g
+mutation_chance = 0.03  # μ
 wildcard_probability = 0.66  # p#
 crossover_chance = 0.75  # χ
 # todo: understand why payoffs are different for each case in larry's
@@ -26,7 +26,7 @@ rewards = {  # P
 }
 
 # environment
-train_x, train_y, *_ = datasets.split(datasets.load_dataset_1())
+train_x, train_y, *_ = datasets.split(datasets.load_old_dataset_1())
 
 
 def roulette_wheel_selection(population, key=lambda i: i.fitness):
@@ -49,13 +49,6 @@ def single_point_crossover(mum, dad):
 def mutate(condition):
     return [
         '#' if random.random() < mutation_chance else c
-        for c in condition
-    ]
-
-
-def generate_covering_rule(condition):
-    return [
-        '#' if random.random() < wildcard_probability else c
         for c in condition
     ]
 
@@ -135,12 +128,15 @@ class YCS:  # Y Learning Classifier System
 
             if len(match_set) == 0:
                 # covering
-                condition = mutate(attributes)
                 # todo: why did larry suggest using a random action instead of
                 #  the endpoint?
                 # action = endpoint
                 action = random.choice((0, 1))
-                individual = Rule(generate_covering_rule(condition), action)
+                condition = [
+                    '#' if random.random() < wildcard_probability else c
+                    for c in attributes
+                ]
+                individual = Rule(condition, action)
                 self.replace_into_population(individual)
                 print('covering', [c.condition for c in self.rulebase])
                 continue
@@ -174,7 +170,7 @@ class YCS:  # Y Learning Classifier System
                 rule.payoff += payoff
 
             # genetic algorithm
-            if explore and len(action_set) > 0 and random.random() < ga_chance:
+            if not explore and len(action_set) > 0 and random.random() < ga_chance:
                 # selection
                 # todo: confirm which rule set the parents are selected from
                 mum, _ = roulette_wheel_selection(self.rulebase, key=lambda x: 1 / x.error)
@@ -194,7 +190,10 @@ def main():
     ycs = YCS()
     for iteration in range(1000):
         ycs.train()
-        print('Iteration:', iteration, 'Accuracy:', ycs.accuracy())
+        average_error = sum(c.error for c in ycs.rulebase) / len(ycs.rulebase)
+        print(f'Iteration: {iteration:4}',
+              f'\tAccuracy: {ycs.accuracy():.3f}',
+              f'\tError: {average_error:.3f}')
 
 
 if __name__ == '__main__':
