@@ -177,15 +177,15 @@ class GA:
             father = select_parent()
 
             # todo: determine which crossover type is best
-
-            # Crossover by index
-            # return [random.choice((m, f)) for m, f in zip(mother, father)]
-
-            # Crossover by rule
-            return list(itertools.chain(*(
-                random.choice((mother[i:i + self.rule_size], father[i:i + self.rule_size]))
-                for i in range(0, self.chromosome_size, self.rule_size)
-            )))
+            if random.choice((True, False)):
+                # Crossover by index
+                return [random.choice((m, f)) for m, f in zip(mother, father)]
+            else:
+                # Crossover by rule
+                return list(itertools.chain(*(
+                    random.choice((mother[i:i + self.rule_size], father[i:i + self.rule_size]))
+                    for i in range(0, self.chromosome_size, self.rule_size)
+                )))
 
         self.population = [crossover() for _ in range(self.population_size - 1)]
 
