@@ -1,5 +1,6 @@
 import itertools
 import random
+from datetime import datetime
 
 from biocomp import datasets
 
@@ -23,12 +24,12 @@ from biocomp import datasets
 
 class GA:
     def __init__(self):
-        self.dataset = 'datasets/2019/data1.txt'
+        self.dataset = 'datasets/2019/data2.txt'
         train_x, train_y, *_ = datasets.split(
             datasets.load_dataset(self.dataset, datasets.parse_binary_string_features))
         self.rule_count = len(train_x)
         self.rule_size = len(train_x[0]) + 1
-        self.population_size = 50
+        self.population_size = 100
         self.generation_count = 10000
         self.crossover_chance = 0.5
         self.tournament_size = 5
@@ -68,7 +69,8 @@ class GA:
                 equal_rule_count = int(tags['rule_count']) == best_rule_count
 
                 if self.checkpoint_fitness:
-                    better_fitness = equal_rule_count and float(tags['fitness']) < best_fitness
+                    better_fitness = equal_rule_count and float(
+                        tags['fitness']) < best_fitness
                 else:
                     better_fitness = better_rule_count and float(tags['fitness']) == 1.0
 
@@ -122,8 +124,13 @@ class GA:
     def train(self):
         self.load_population()
 
-        for generation in range(self.generation_count):
-            self.generation = generation
+        # for generation in range(self.generation_count):
+        #     self.generation = generation
+        #     self.train_step()
+
+        self.generation = 0
+        while True:
+            self.generation += 1
             self.train_step()
 
     def train_step(self):
@@ -168,7 +175,17 @@ class GA:
         def crossover():
             mother = select_parent()
             father = select_parent()
-            return [random.choice((m, f)) for m, f in zip(mother, father)]
+
+            # todo: determine which crossover type is best
+
+            # Crossover by index
+            # return [random.choice((m, f)) for m, f in zip(mother, father)]
+
+            # Crossover by rule
+            return list(itertools.chain(*(
+                random.choice((mother[i:i + self.rule_size], father[i:i + self.rule_size]))
+                for i in range(0, self.chromosome_size, self.rule_size)
+            )))
 
         self.population = [crossover() for _ in range(self.population_size - 1)]
 
@@ -211,6 +228,7 @@ class GA:
                 f'rule_count:{self.rule_count} '
                 f'generation:{self.generation} '
                 f'fitness:{fitness} '
+                f'time:{str(datetime.now()).replace(" ", "_")} '
                 f'rules:{",".join(map(str, best))} '
                 f'\n'
             )
