@@ -42,6 +42,8 @@ class GA:
         self.generation = 0
         self.checkpoint_fitness = False
 
+        self.alternatives = set()
+
     @property
     def chromosome_size(self):
         return self.rule_size * self.rule_count
@@ -149,6 +151,16 @@ class GA:
         total_fitness = sum(population_fitness)
         mean_fitness = total_fitness / self.population_size
 
+        if best_fitness == self.overall_best_fitness:
+            self.overall_best = best
+            self.overall_best_fitness = best_fitness
+
+            if str(best) not in self.alternatives:
+                self.alternatives.add(str(best))
+                self.checkpoint_fitness = True
+                self.save_solution(best, best_fitness, 'alternatives.txt')
+                self.checkpoint_fitness = False
+
         if best_fitness > self.overall_best_fitness:
             regenerated_population = self.found_new_best(best, best_fitness)
             if regenerated_population:
@@ -218,11 +230,11 @@ class GA:
         self.generate_population(best)
         return True
 
-    def save_solution(self, best, fitness):
+    def save_solution(self, best, fitness, file='solutions.txt'):
         if fitness < 1.0 and not self.checkpoint_fitness:
             return
 
-        with open('solutions.txt', 'a') as f:
+        with open(file, 'a') as f:
             f.write(
                 f'dataset:{self.dataset} '
                 f'rule_count:{self.rule_count} '

@@ -241,7 +241,7 @@ def tournament_selection(population, fitnesses, tournament_size):
 
 
 def main():
-    features, labels, *_ = datasets.split(datasets.load_dataset_1())
+    features, labels, *_ = datasets.split(datasets.load_dataset_2())
     population_size = 50
     generation_count = 10000
     crossover_chance = 0.85
@@ -268,7 +268,10 @@ def main():
     population = [create_gene(tree_settings) for _ in range(population_size)]
     overall_best, overall_best_fitness = None, -float('inf')
 
-    for generation in range(generation_count):
+    # for generation in range(generation_count):
+    generation = 0
+    while True:
+        generation += 1
         # evaluation
         fitnesses = [gene.fitness(features, labels) for gene in population]
         best_fitness = max(fitnesses)
@@ -277,7 +280,9 @@ def main():
 
         if best_fitness > overall_best_fitness:
             overall_best, overall_best_fitness = best, best_fitness
-            print('New best:', overall_best_fitness, 'Gene:', overall_best)
+            with open('tree_solutions.txt', 'a') as f:
+                print('New best:', overall_best_fitness, 'Gene:', overall_best)
+                f.write(str(overall_best_fitness) + ' : ' + str(overall_best) + '\n')
 
             if best_fitness == 1:
                 print('Model converged, best solution found on generation', generation)
