@@ -7,7 +7,7 @@ def print_solution():
     print('Solution:')
     for i, j in enumerate(range(0, len(solution), rule_size)):
         pretty_rule = " ".join(map(str, solution[j:j + rule_size]))
-        print(f'Rule #{i}:\t{pretty_rule}')
+        print(f'\tRule #{i}:\t{pretty_rule}')
 
 
 def evaluate(chromosome, attributes):
@@ -23,6 +23,7 @@ def evaluate(chromosome, attributes):
 
 
 def check_against_data2():
+    print('Missing Values:')
     for attributes in [
         [0, 0, 0, 0, 0, 1],
         [0, 0, 1, 1, 1, 0],
@@ -30,7 +31,7 @@ def check_against_data2():
         [1, 1, 1, 1, 1, 1],
     ]:
         prediction = evaluate(solution, attributes)
-        print('Attributes:', ' '.join(map(str, attributes)), 'Predicted Label:', prediction)
+        print('\tAttributes:', ' '.join(map(str, attributes)), 'Predicted Label:', prediction)
 
     from biocomp import datasets
     train_x, train_y, *_ = datasets.split(datasets.load_dataset_2())
@@ -39,6 +40,7 @@ def check_against_data2():
         if evaluate(solution, features) == label:
             correct += 1
     fitness = correct / len(train_x)
+    print()
     print(f'Achieved {correct}/{len(train_x)} ({fitness}) on training data')
 
 
