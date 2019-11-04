@@ -24,9 +24,24 @@ from biocomp import datasets
 
 class GA:
     def __init__(self):
-        self.dataset = 'datasets/2019/data2.txt'
+        self.dataset = 'datasets/2019/data1.txt'
         train_x, train_y, *_ = datasets.split(
             datasets.load_dataset(self.dataset, datasets.parse_binary_string_features))
+
+        # both dataset 3's are digital multiplexers, change to binary
+        if 'data3.txt' in self.dataset:
+            features = []
+            labels = []
+
+            for tx, ty in zip(train_x, train_y):
+                tx = [round(i) for i in tx]
+                if tx not in features:
+                    features.append(tx)
+                    labels.append(ty)
+
+            train_x = features
+            train_y = labels
+
         self.rule_count = len(train_x)
         self.rule_size = len(train_x[0]) + 1
         self.population_size = 100

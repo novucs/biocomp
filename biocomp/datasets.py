@@ -7,8 +7,8 @@ def parse_binary_string_features(features):
 
 
 def parse_floating_point_features(features):
-    return [round(float(i)) for i in features]
-    # return [float(i) for i in features]
+    # return [round(float(i)) for i in features]
+    return [float(i) for i in features]
 
 
 def load_dataset(path, parse_features):
@@ -53,6 +53,10 @@ def load_dataset_1():
 
 def load_dataset_2():
     return load_new_dataset('data2.txt', parse_binary_string_features)
+
+
+def load_dataset_3():
+    return load_new_dataset('data3.txt', parse_floating_point_features)
 
 
 def split(dataset, train_percent=1.0):
