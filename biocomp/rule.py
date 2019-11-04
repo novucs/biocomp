@@ -24,7 +24,7 @@ from biocomp import datasets
 
 class GA:
     def __init__(self):
-        self.dataset = 'datasets/2019/data1.txt'
+        self.dataset = 'datasets/2019/data2.txt'
         train_x, train_y, *_ = datasets.split(
             datasets.load_dataset(self.dataset, datasets.parse_binary_string_features))
 
