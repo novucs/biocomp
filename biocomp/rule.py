@@ -160,6 +160,8 @@ class GA:
                 self.checkpoint_fitness = True
                 self.save_solution(best, best_fitness, 'alternatives.txt')
                 self.checkpoint_fitness = False
+            elif random.random() < self.mutation_chance:
+                self.load_population()
 
         if best_fitness > self.overall_best_fitness:
             regenerated_population = self.found_new_best(best, best_fitness)
