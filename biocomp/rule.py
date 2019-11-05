@@ -57,6 +57,10 @@ class GA:
         self.generation = 0
         self.checkpoint_fitness = False
 
+        # self.fitness_threshold = (59/60)
+        self.fitness_threshold = 1.0
+        self.noisy_prints = True
+
         self.alternatives = set()
 
     @property
@@ -89,7 +93,7 @@ class GA:
                     better_fitness = equal_rule_count and float(
                         tags['fitness']) < best_fitness
                 else:
-                    better_fitness = better_rule_count and float(tags['fitness']) == 1.0
+                    better_fitness = better_rule_count and float(tags['fitness']) >= self.fitness_threshold
 
                 if same_dataset and (better_rule_count or better_fitness):
                     best = list(map(lambda k: '#' if k == '#' else int(float(k)),
@@ -97,8 +101,8 @@ class GA:
                     best_rule_count = len(best) // self.rule_size
                     best_fitness = float(tags['fitness'])
 
-        self.rule_count = best_rule_count - 1 if best_fitness == 1.0 else best_rule_count
-        self.generate_population(best, smaller=best is not None and best_fitness == 1.0)
+        self.rule_count = best_rule_count - 1 if best_fitness >= self.fitness_threshold else best_rule_count
+        self.generate_population(best, smaller=best is not None and best_fitness >= self.fitness_threshold)
 
     def generate_population(self, original_best=None, smaller=True):
         if not original_best:
@@ -138,6 +142,13 @@ class GA:
         return sum(1 if self.evaluate(chromosome, f) == l else 0
                    for f, l in zip(features, labels)) / len(labels)
 
+    def wrong_classifications(self, chromosome, features, labels):
+        wrong = []
+        for f, l in zip(features, labels):
+            if self.evaluate(chromosome, f) != l:
+                wrong.append([f, l])
+        return wrong
+
     def train(self):
         self.load_population()
 
@@ -165,6 +176,9 @@ class GA:
         best = self.population[best_index]
         total_fitness = sum(population_fitness)
         mean_fitness = total_fitness / self.population_size
+
+        if self.noisy_prints:
+            print(self.wrong_classifications(best, self.train_x, self.train_y))
 
         if best_fitness == self.overall_best_fitness:
             self.overall_best = best
@@ -231,7 +245,7 @@ class GA:
         self.overall_best = best
         self.overall_best_fitness = best_fitness
 
-        if best_fitness != 1.0:
+        if best_fitness < self.fitness_threshold:
             return False
 
         lines = [f'Found rule in {self.generation} generations '
@@ -248,7 +262,7 @@ class GA:
         return True
 
     def save_solution(self, best, fitness, file='solutions.txt'):
-        if fitness < 1.0 and not self.checkpoint_fitness:
+        if fitness < self.fitness_threshold and not self.checkpoint_fitness:
             return
 
         with open(file, 'a') as f:

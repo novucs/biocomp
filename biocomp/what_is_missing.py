@@ -12,6 +12,8 @@ from biocomp import datasets
 # 001110
 # 101001
 # 111111
+# looks like 011000 is always incorrectly predicted,
+# must be an anomaly in the dataset
 
 # dataset 3 is a digital multiplexer with noise, no missing values
 
