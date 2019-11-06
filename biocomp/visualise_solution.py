@@ -44,11 +44,24 @@ def check_against_data2():
     print(f'Achieved {correct}/{len(train_x)} ({fitness}) on training data')
 
 
+def print_hard_coded_rules():
+    rules = []
+    for i in range(0, len(solution), rule_size):
+        rule = solution[i:i + rule_size]
+        if '#' not in rule:
+            rules.append(rule)
+
+    print(f'Found {len(rules)} hardcoded rules:')
+    for rule in rules:
+        print(f'\t{"".join(map(str, rule[:-1]))} {rule[-1]}')
+
+
 def main():
     print_solution()
     print()
     check_against_data2()
     print()
+    print_hard_coded_rules()
 
 
 if __name__ == '__main__':
