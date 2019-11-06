@@ -57,9 +57,9 @@ class GA:
         self.generation = 0
         self.checkpoint_fitness = False
 
-        # self.fitness_threshold = (59/60)
-        self.fitness_threshold = 1.0
-        self.noisy_prints = True
+        self.fitness_threshold = (60 / 60)
+        # self.fitness_threshold = 1.0
+        self.noisy_prints = False
 
         self.alternatives = set()
 
@@ -139,8 +139,11 @@ class GA:
         return None
 
     def fitness(self, chromosome, features, labels):
-        return sum(1 if self.evaluate(chromosome, f) == l else 0
-                   for f, l in zip(features, labels)) / len(labels)
+        correctness = sum(1 if self.evaluate(chromosome, f) == l else 0
+                          for f, l in zip(features, labels)) / len(labels)
+        hashes = sum(1 if c == '#' else 0 for c in chromosome)
+        generalisation = hashes / (self.chromosome_size * len(features))
+        return correctness + generalisation
 
     def wrong_classifications(self, chromosome, features, labels):
         wrong = []
