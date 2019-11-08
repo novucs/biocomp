@@ -1,4 +1,5 @@
-solution = "0,1,1,0,0,0,0,0,1,0,1,0,1,1,0,1,1,0,1,1,0,0,1,1,0,#,#,1,1,0,1,#,0,1,0,#,0,#,0,0,1,0,1,#,1,1,#,1,1,#,0,1,#,0,1,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,#,0,0,0,#,#,1,1,0,0,#,0,0,0,1,0,#,1,0,#,1,0,1,0,1,1,0,1,0,#,#,#,1,0,0,1,1,1,1,0,0,0,#,0,1,1,#,#,0,1,0,1,0,0,#,0,1,#,0,0,0,1,1,#,#,#,#,0,1,0,0,0,1,0,0,1,0,0,0,0,0,0,#,1,0,1,0,1,#,#,0,0,#,#,#,#,0,1,1,#,0,0,1,0,1,1,0,#,#,#,1,0,1,1,0,0,#,#,0,#,1,0,#,1,0,0,#,1,1,0,1,0,0,#,#,#,#,#,#,1"
+# solution = "#,0,0,0,1,#,1,0,#,#,#,1,0,0,1,1,1,1,#,#,1,0,0,1,1,#,#,0,1,0,1,0,0,#,0,1,0,0,1,0,#,1,#,#,#,#,0,1,0,0,1,1,0,#,#,0,#,#,1,1,#,1,1,0,1,0,1,#,#,0,0,0,0,0,#,#,0,#,#,0,0,1,0,1,1,0,#,#,#,1,0,1,1,0,0,#,#,0,#,#,1,1,1,#,0,#,1,#,#,1,0,0,#,#,#,#,#,#,1"
+solution = "0,1,1,0,0,0,0,0,1,0,1,0,1,1,0,1,1,0,1,1,0,0,1,1,0,#,#,1,1,0,1,#,0,1,0,#,0,#,0,0,1,0,1,#,1,1,#,1,1,#,0,1,#,0,1,1,0,0,0,0,0,#,0,1,0,0,0,1,0,0,#,0,0,0,#,#,1,1,0,0,#,0,0,0,1,0,#,1,0,#,1,0,1,0,1,1,0,1,0,#,#,#,1,0,0,1,#,1,1,0,#,0,#,0,1,1,#,#,0,1,0,#,#,0,#,0,1,#,0,0,0,1,1,#,#,#,#,0,1,0,#,0,#,#,#,0,1,0,1,0,1,#,#,0,0,#,#,#,#,#,1,#,#,0,0,1,0,1,#,0,#,#,#,#,0,#,#,0,0,#,#,0,#,#,0,#,1,0,0,#,#,#,0,1,0,0,#,#,#,#,#,#,1"
 rule_size = 7
 solution = [int(s) if s != '#' else '#' for s in solution.split(',')]
 
@@ -6,7 +7,8 @@ solution = [int(s) if s != '#' else '#' for s in solution.split(',')]
 def print_solution():
     print('Solution:')
     for i, j in enumerate(range(0, len(solution), rule_size)):
-        pretty_rule = " ".join(map(str, solution[j:j + rule_size]))
+        rule = solution[j:j + rule_size]
+        pretty_rule = "".join(map(str, rule[:-1])) + " " + str(rule[-1])
         print(f'\tRule #{i}:\t{pretty_rule}')
 
 
@@ -23,7 +25,7 @@ def evaluate(chromosome, attributes):
 
 
 def check_against_data2():
-    print('Missing Values:')
+    print('Missing Value Predictions:')
     for attributes in [
         [0, 0, 0, 0, 0, 1],
         [0, 0, 1, 1, 1, 0],
@@ -31,7 +33,7 @@ def check_against_data2():
         [1, 1, 1, 1, 1, 1],
     ]:
         prediction = evaluate(solution, attributes)
-        print('\tAttributes:', ' '.join(map(str, attributes)), 'Predicted Label:', prediction)
+        print('\tAttributes:', ''.join(map(str, attributes)), 'Predicted Label:', prediction)
 
     from biocomp import datasets
     train_x, train_y, *_ = datasets.split(datasets.load_dataset_2())
