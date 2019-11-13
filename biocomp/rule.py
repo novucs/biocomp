@@ -1,25 +1,141 @@
-import itertools
 import random
 from datetime import datetime
+from typing import (
+    List,
+    Union,
+)
 
 from biocomp import datasets
 
 
-# class Rule:
-#     def __init__(self, condition, action):
-#         self.condition = condition
-#         self.action = action
-#
-#
-# class Individual:
-#     def __init__(self):
-#         self.rulebase = []
-#
-#     def crossover(self, other):
-#         pass
-#
-#     def mutate(self):
-#         pass
+class Rule:
+    def __init__(self, ga, condition, action):
+        self.ga: GA = ga
+        self.condition: List[Union[int, str]] = condition
+        self.action: int = action
+
+    @property
+    def generalisation(self):
+        return self.condition.count('#') / len(self.condition)
+
+    def uniform_crossover(self, other):
+        condition = [random.choice((s, o)) for s, o in zip(self.condition, other.condition)]
+        action = random.choice((self.action, other.action))
+        return Rule(self.ga, condition, action)
+
+    def mutate_condition(self, condition):
+        return condition if self.ga.mutation_chance < random.random() else random.choice((0, 1, '#'))
+
+    def mutate_action(self, action):
+        return action if self.ga.mutation_chance < random.random() else random.choice((0, 1))
+
+    def mutate(self):
+        condition = list(map(self.mutate_condition, self.condition))
+        action = self.mutate_action(self.action)
+        return Rule(self.ga, condition, action)
+
+    def matches(self, features):
+        return all(p == f or p == "#" for p, f in zip(self.condition, features))
+
+    def copy(self):
+        return Rule(self.ga, self.condition.copy(), self.action)
+
+    @staticmethod
+    def generate(ga):
+        condition = random.choices((0, 1, '#'), k=ga.condition_size)
+        action = random.choice((0, 1))
+        return Rule(ga, condition, action)
+
+    @staticmethod
+    def load(ga, dump):
+        *condition, action = dump.split(',')
+        condition = [c if c == '#' else int(float(c)) for c in condition]
+        action = int(action)
+        return Rule(ga, condition, action)
+
+    def dump(self):
+        return ','.join(map(str, (self.condition + [self.action])))
+
+    @staticmethod
+    def from_sample(ga, features, label):
+        return Rule(ga, features.copy(), int(label))
+
+
+class Individual:
+    def __init__(self, ga, rules=None):
+        self.ga: GA = ga
+        self.rules: List[Rule] = rules or []
+
+    @property
+    def generalisation(self):
+        return sum(r.generalisation for r in self.rules) / len(self.rules)
+
+    @property
+    def rule_count(self):
+        return len(self.rules)
+
+    def uniform_crossover(self, other):
+        rules = [s.uniform_crossover(o) for s, o in zip(self.rules, other.rules)]
+        return Individual(self.ga, rules)
+
+    def crossover_by_rule(self, other):
+        rules = [random.choice((s, o)) for s, o in zip(self.rules, other.rules)]
+        return Individual(self.ga, rules)
+
+    def crossover(self, other):
+        # todo: determine which crossover type is best
+        return self.uniform_crossover(other) if random.choice((True, False)) \
+            else self.crossover_by_rule(other)
+
+    def mutate(self):
+        return Individual(self.ga, [r.mutate() for r in self.rules])
+
+    def evaluate(self, features):
+        return next((r.action for r in self.rules if r.matches(features)), None)
+
+    def correct_count(self, features, labels):
+        return sum(int(self.evaluate(f) == l) for f, l in zip(features, labels))
+
+    def fitness(self, features, labels):
+        correctness = self.correct_count(features, labels) / len(labels)
+        # generalisation = self.generalisation / len(labels)
+        generalisation = 0
+        return correctness + generalisation
+
+    def wrong_classifications(self, features, labels):
+        return [f for f, l in zip(features, labels) if self.evaluate(f) != l]
+
+    def copy(self):
+        return Individual(self.ga, self.rules.copy())
+
+    @staticmethod
+    def generate(ga):
+        rules = [Rule.generate(ga) for _ in range(ga.rule_count)]
+        return Individual(ga, rules)
+
+    @staticmethod
+    def load(ga, dump, rule_count):
+        params = dump.split(',')
+        rules = [
+            Rule.load(ga, ','.join(params[i:i + ga.rule_size]))
+            for i in range(0, ga.rule_size * rule_count, ga.rule_size)
+        ]
+        return Individual(ga, rules)
+
+    def dump(self):
+        return ','.join(r.dump() for r in self.rules)
+
+    @staticmethod
+    def from_samples(ga, features, labels):
+        samples = random.choices(list(zip(features, labels)), k=ga.rule_count)
+        rules = [Rule.from_sample(ga, f, l) for f, l in samples]
+        return Individual(ga, rules)
+
+    def remove_rule(self):
+        # todo: remove based on niche
+        individual = self.copy()
+        individual.rules.remove(random.choice(self.rules))
+        return individual
 
 
 class GA:
@@ -43,6 +159,7 @@ class GA:
             train_y = labels
 
         self.rule_count = len(train_x)
+        self.condition_size = len(train_x[0])
         self.rule_size = len(train_x[0]) + 1
         self.population_size = 100
         self.generation_count = 10000
@@ -51,7 +168,7 @@ class GA:
         self.distill_inheritance_chance = 0.33
         self.train_x = train_x
         self.train_y = train_y
-        self.population = []
+        self.population: List[Individual] = []
         self.overall_best = None
         self.overall_best_fitness = -float('inf')
         self.generation = 0
@@ -77,7 +194,8 @@ class GA:
             [0, 1, '#'] if index % self.rule_size != (self.rule_size - 1) else [0, 1])
 
     def load_population(self):
-        best, best_rule_count, best_fitness = None, self.rule_count, -float('inf')
+        best, best_rule_count, best_fitness = None, float('inf'), -float('inf')
+
         with open('solutions.txt', 'r') as f:
             for line in f:
                 tags = {
@@ -86,94 +204,61 @@ class GA:
                 }
 
                 same_dataset = tags['dataset'] == self.dataset
-                better_rule_count = int(tags['rule_count']) < best_rule_count
-                equal_rule_count = int(tags['rule_count']) == best_rule_count
+                rule_count = int(tags['rule_count'])
+                better_rule_count = rule_count < best_rule_count
+                equal_rule_count = rule_count == best_rule_count
 
                 if self.checkpoint_fitness:
-                    better_fitness = equal_rule_count and float(
-                        tags['fitness']) < best_fitness
+                    better_fitness = equal_rule_count and float(tags['fitness']) < best_fitness
                 else:
                     better_fitness = better_rule_count and float(tags['fitness']) >= self.fitness_threshold
 
                 if same_dataset and (better_rule_count or better_fitness):
-                    best = list(map(lambda k: '#' if k == '#' else int(float(k)),
-                                    tags['rules'].split(',')))
-                    best_rule_count = len(best) // self.rule_size
+                    best = Individual.load(self, tags['rules'], rule_count)
                     best_fitness = float(tags['fitness'])
+                    self.rule_count = best_rule_count = rule_count
 
-        self.rule_count = best_rule_count - 1 if best_fitness >= self.fitness_threshold else best_rule_count
-        self.generate_population(best, smaller=best is not None and best_fitness >= self.fitness_threshold)
+        reduce_rule_count = best_fitness >= self.fitness_threshold
+        if reduce_rule_count:
+            self.rule_count -= 1
 
-    def generate_population(self, original_best=None, smaller=True):
-        if not original_best:
-            original_best = list(itertools.chain(*[
-                list(map(int, tx)) + [int(ty)]
-                for tx, ty in zip(self.train_x, self.train_y)
-            ]))
+        self.generate_population(best, smaller=reduce_rule_count)
 
-        self.population = [original_best[:self.chromosome_size]]
+    def sample_from_dataset(self):
+        index = random.randint(0, len(self.train_x) - 1)
+        return self.train_x[index], self.train_y[index]
 
-        if smaller:
-            self.population.append(original_best[self.rule_size:])
+    def generate_population(self, best=None, smaller=True):
+        self.population = self.covered_population() if not best \
+            else self.reduced_population(best) if smaller \
+            else self.similar_population(best)
 
-        for _ in range(self.population_size - (2 if smaller else 1)):
-            rules = []
+    def similar_population(self, best):
+        return [best.copy()] + self.covered_population()[:-1]
 
-            for index in range(0, self.chromosome_size, self.rule_size):
-                if random.random() < self.distill_inheritance_chance:
-                    rules.append(original_best[index: index + self.rule_size])
-                else:
-                    rules.append([self.random_chromosome(i) for i in range(self.rule_size)])
+    def reduced_population(self, best):
+        return [
+            best.remove_rule() if random.random() < self.distill_inheritance_chance \
+                else Individual.from_samples(self, self.train_x, self.train_y)
+            for _ in range(self.population_size)
+        ]
 
-            self.population.append(list(itertools.chain(*rules)))
-
-    def evaluate(self, chromosome, attributes):
-        # votes = [0, 0]
-        for index in range(0, self.chromosome_size, self.rule_size):
-            # print(chromosome)
-            *condition, action = chromosome[index: index + self.rule_size]
-            if all(p == f or p == "#" for p, f in zip(condition, attributes)):
-                # votes[action] += 1
-                return action
-        # return votes.index(max(votes))
-        return None
-
-    def fitness(self, chromosome, features, labels):
-        correctness = sum(1 if self.evaluate(chromosome, f) == l else 0
-                          for f, l in zip(features, labels)) / len(labels)
-        hashes = sum(1 if c == '#' else 0 for c in chromosome)
-        generalisation = hashes / (self.chromosome_size * len(features))
-        return correctness + generalisation
-
-    def wrong_classifications(self, chromosome, features, labels):
-        wrong = []
-        for f, l in zip(features, labels):
-            if self.evaluate(chromosome, f) != l:
-                wrong.append([f, l])
-        return wrong
+    def covered_population(self):
+        return [
+            Individual.from_samples(self, self.train_x, self.train_y)
+            for _ in range(self.population_size)
+        ]
 
     def train(self):
         self.load_population()
-
-        # for generation in range(self.generation_count):
-        #     self.generation = generation
-        #     self.train_step()
-
         self.generation = 0
         while True:
             self.generation += 1
             self.train_step()
 
     def train_step(self):
-        # self.population.append([
-        #     0, 0, '#', '#', '#', 1, 1,
-        #     1, 1, 1, '#', '#', '#', 1,
-        #     0, 1, '#', '#', 1, '#', 1,
-        #     1, 0, '#', 1, '#', '#', 1,
-        #     '#', '#', '#', '#', '#', '#', 0,
-        # ])
-        population_fitness = [self.fitness(chromosome, self.train_x, self.train_y)
-                              for chromosome in self.population]
+        population_fitness = [individual.fitness(self.train_x, self.train_y)
+                              for individual in self.population]
         best_fitness = max(population_fitness)
         best_index = population_fitness.index(best_fitness)
         best = self.population[best_index]
@@ -181,7 +266,7 @@ class GA:
         mean_fitness = total_fitness / self.population_size
 
         if self.noisy_prints:
-            print(self.wrong_classifications(best, self.train_x, self.train_y))
+            print(best.wrong_classifications(self.train_x, self.train_y))
 
         if best_fitness == self.overall_best_fitness:
             self.overall_best = best
@@ -218,30 +303,8 @@ class GA:
                     fittest = self.population[index]
             return fittest
 
-        def crossover():
-            mother = select_parent()
-            father = select_parent()
-
-            # todo: determine which crossover type is best
-            if random.choice((True, False)):
-                # Crossover by index
-                return [random.choice((m, f)) for m, f in zip(mother, father)]
-            else:
-                # Crossover by rule
-                return list(itertools.chain(*(
-                    random.choice((mother[i:i + self.rule_size], father[i:i + self.rule_size]))
-                    for i in range(0, self.chromosome_size, self.rule_size)
-                )))
-
-        self.population = [crossover() for _ in range(self.population_size - 1)]
-
-        # mutate
-        for chromosome in self.population:
-            for index in range(self.chromosome_size):
-                if self.mutation_chance > random.random() and \
-                        index % self.rule_size != (self.rule_size - 1):
-                    chromosome[index] = self.random_chromosome(index)
-
+        self.population = [select_parent().crossover(select_parent()).mutate()
+                           for _ in range(self.population_size - 1)]
         self.population.append(self.overall_best)
 
     def found_new_best(self, best, best_fitness):
@@ -275,7 +338,7 @@ class GA:
                 f'generation:{self.generation} '
                 f'fitness:{fitness} '
                 f'time:{str(datetime.now()).replace(" ", "_")} '
-                f'rules:{",".join(map(str, best))} '
+                f'rules:{best.dump()} '
                 f'\n'
             )
 
