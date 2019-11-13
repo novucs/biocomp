@@ -60,6 +60,9 @@ class Rule:
     def from_sample(ga, features, label):
         return Rule(ga, features.copy(), int(label))
 
+    def subsumes(self, other):
+        return all(s == o or s == '#' for s, o in zip(self.condition, other.condition))
+
 
 class Individual:
     def __init__(self, ga, rules=None):
@@ -144,6 +147,14 @@ class Individual:
         individual = self.copy()
         individual.rules.remove(random.choice(self.rules))
         return individual
+
+    def compress(self):
+        rules = [
+            rule.copy()
+            for i, rule in enumerate(self.rules)
+            if not any(o.subsumes(rule) for o in self.rules[:i])
+        ]
+        return Individual(self.ga, rules)
 
 
 class GA:
@@ -322,11 +333,13 @@ class GA:
         self.population.append(self.overall_best)
 
     def found_new_best(self, best, best_fitness):
-        self.overall_best = best
-        self.overall_best_fitness = best_fitness
-
         if best_fitness < self.fitness_threshold:
+            self.overall_best = best
+            self.overall_best_fitness = best_fitness
             return False
+
+        best = best.compress()
+        self.rule_count = best.rule_count
 
         lines = [f'Found rule in {self.generation} generations '
                  f'with rule count of {self.rule_count}:']
