@@ -88,7 +88,15 @@ class Individual:
             else self.crossover_by_rule(other)
 
     def mutate(self):
-        return Individual(self.ga, [r.mutate() for r in self.rules])
+        # mutate each rule individually
+        rules = [r.mutate() for r in self.rules]
+
+        # randomly swap order of rules
+        for i in range(len(rules) - 1):
+            if random.random() < self.ga.mutation_chance:
+                rules[i], rules[i + 1] = rules[i + 1], rules[i]
+
+        return Individual(self.ga, rules)
 
     def evaluate(self, features):
         return next((r.action for r in self.rules if r.matches(features)), None)
@@ -98,8 +106,8 @@ class Individual:
 
     def fitness(self, features, labels):
         correctness = self.correct_count(features, labels) / len(labels)
-        # generalisation = self.generalisation / len(labels)
-        generalisation = 0
+        generalisation = self.generalisation / len(labels)
+        # generalisation = 0
         return correctness + generalisation
 
     def wrong_classifications(self, features, labels):
@@ -140,7 +148,7 @@ class Individual:
 
 class GA:
     def __init__(self):
-        self.dataset = 'datasets/2019/data2.txt'
+        self.dataset = 'datasets/2019/data1.txt'
         train_x, train_y, *_ = datasets.split(
             datasets.load_dataset(self.dataset, datasets.parse_binary_string_features))
 
@@ -249,6 +257,22 @@ class GA:
             for _ in range(self.population_size)
         ]
 
+    def tournament_selection(self, population_fitness):
+        fittest, fitness = None, -1
+        for i in range(self.tournament_size):
+            index = int(random.random() * self.population_size)
+            if population_fitness[index] > fitness:
+                fitness = population_fitness[index]
+                fittest = self.population[index]
+        return fittest
+
+    def create_offspring(self, population_fitness):
+        mum = self.tournament_selection(population_fitness)
+        dad = self.tournament_selection(population_fitness)
+        offspring = mum.crossover(dad)
+        offspring = offspring.mutate()
+        return offspring
+
     def train(self):
         self.load_population()
         self.generation = 0
@@ -294,17 +318,7 @@ class GA:
                 f'Rule Count: {self.rule_count:3} \t'
             )
 
-        def select_parent():
-            fittest, fitness = None, -1
-            for i in range(self.tournament_size):
-                index = int(random.random() * self.population_size)
-                if population_fitness[index] > fitness:
-                    fitness = population_fitness[index]
-                    fittest = self.population[index]
-            return fittest
-
-        self.population = [select_parent().crossover(select_parent()).mutate()
-                           for _ in range(self.population_size - 1)]
+        self.population = [self.create_offspring(population_fitness) for _ in range(self.population_size - 1)]
         self.population.append(self.overall_best)
 
     def found_new_best(self, best, best_fitness):
