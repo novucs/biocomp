@@ -114,7 +114,7 @@ class Individual:
         return correctness + generalisation
 
     def wrong_classifications(self, features, labels):
-        return [f for f, l in zip(features, labels) if self.evaluate(f) != l]
+        return [(f, l) for f, l in zip(features, labels) if self.evaluate(f) != l]
 
     def copy(self):
         return Individual(self.ga, self.rules.copy())
@@ -156,10 +156,18 @@ class Individual:
         ]
         return Individual(self.ga, rules)
 
+    def cover(self, features, labels):
+        wrong = self.wrong_classifications(features, labels)
+        rules = self.compress().rules
+        rules = [Rule.from_sample(self.ga, f, l) for f, l in wrong[:self.ga.rule_count - len(rules)]] + rules
+        samples = random.choices(list(zip(features, labels)), k=(self.ga.rule_count - len(rules)))
+        rules += [Rule.from_sample(self.ga, f, l) for f, l in samples]
+        return Individual(self.ga, rules)
+
 
 class GA:
     def __init__(self):
-        self.dataset = 'datasets/2019/data1.txt'
+        self.dataset = 'datasets/2019/data2.txt'
         train_x, train_y, *_ = datasets.split(
             datasets.load_dataset(self.dataset, datasets.parse_binary_string_features))
 
@@ -192,8 +200,9 @@ class GA:
         self.overall_best_fitness = -float('inf')
         self.generation = 0
         self.checkpoint_fitness = False
+        self.cover_chance = 0.1
 
-        self.fitness_threshold = (60 / 60)
+        self.fitness_threshold = (59 / 60)
         # self.fitness_threshold = 1.0
         self.noisy_prints = False
 
@@ -282,6 +291,8 @@ class GA:
         dad = self.tournament_selection(population_fitness)
         offspring = mum.crossover(dad)
         offspring = offspring.mutate()
+        if random.random() < self.cover_chance:
+            offspring = offspring.cover(self.train_x, self.train_y)
         return offspring
 
     def train(self):
@@ -296,7 +307,7 @@ class GA:
                               for individual in self.population]
         best_fitness = max(population_fitness)
         best_index = population_fitness.index(best_fitness)
-        best = self.population[best_index]
+        best = self.population[best_index].cover(self.train_x, self.train_y)
         total_fitness = sum(population_fitness)
         mean_fitness = total_fitness / self.population_size
 
