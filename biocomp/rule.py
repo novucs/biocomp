@@ -385,7 +385,7 @@ class GA:
                 f'generation:{self.generation} '
                 f'fitness:{fitness} '
                 f'time:{str(datetime.now()).replace(" ", "_")} '
-                f'rules:{best.dump()} '
+                f'rules:{best.dump()}'
                 f'\n'
             )
 

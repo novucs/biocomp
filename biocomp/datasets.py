@@ -59,6 +59,10 @@ def load_dataset_3():
     return load_new_dataset('data3.txt', parse_floating_point_features)
 
 
+def load_dataset_4():
+    return load_new_dataset('data4.txt', parse_floating_point_features)
+
+
 def split(dataset, train_percent=1.0):
     if train_percent >= 1.0:
         train_x, train_y = zip(*dataset)

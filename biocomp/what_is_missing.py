@@ -23,11 +23,13 @@ def what_is_missing(features):
         b = ("0" * (6 - len(b))) + b
         attributes = [float(int(e)) for e in b]
         if attributes not in features:
-            print(b)
+            print(f'\tMissing: {b}')
 
 
 def prove_digital_multiplexer(features, labels):
     features = [[round(j) for j in i] for i in features]
+    is_digital = True
+    missing = False
 
     for i in range(2 ** 6):
         b = str(bin(i)).split('b')[1]
@@ -41,8 +43,16 @@ def prove_digital_multiplexer(features, labels):
 
         if not classes:
             print('missing:', attributes)
+            missing = True
         elif len(set(classes)) != 1:
             print('attributes:', attributes, 'can be true and false')
+            is_digital = False
+
+    if not missing:
+        print('\tAll possible inputs are in this dataset')
+
+    if is_digital:
+        print('\tThis dataset is a digital multiplexer')
 
 
 def main():
@@ -57,6 +67,11 @@ def main():
     print()
 
     print('Processing dataset 3:')
+    features, labels, *_ = datasets.split(datasets.load_dataset_3())
+    prove_digital_multiplexer(features, labels)
+    print()
+
+    print('Processing dataset 4:')
     features, labels, *_ = datasets.split(datasets.load_dataset_3())
     prove_digital_multiplexer(features, labels)
     print()
