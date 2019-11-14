@@ -11,7 +11,7 @@ from biocomp import datasets
 class Rule:
     def __init__(self, ga, condition, action):
         self.ga: GA = ga
-        self.condition: List[Union[int, str]] = condition
+        self.condition: List[Union[List[float, float], str]] = condition
         self.action: int = action
 
     @property
@@ -23,45 +23,65 @@ class Rule:
         action = random.choice((self.action, other.action))
         return Rule(self.ga, condition, action)
 
-    def mutate_condition(self, condition):
-        return condition if self.ga.mutation_chance < random.random() else random.choice((0, 1, '#'))
+    def mutate_bounds(self, bounds):
+        if bounds == '#':
+            return self.random_bounds() if random.random() < self.ga.mutation_chance else bounds
+
+        lower, upper = bounds
+        lower = Rule.random_bound(upper=upper) if random.random() < self.ga.mutation_chance else lower
+        upper = Rule.random_bound(lower=lower) if random.random() < self.ga.mutation_chance else upper
+        return lower, upper
 
     def mutate_action(self, action):
         return action if self.ga.mutation_chance < random.random() else random.choice((0, 1))
 
     def mutate(self):
-        condition = list(map(self.mutate_condition, self.condition))
+        condition = list(map(self.mutate_bounds, self.condition))
         action = self.mutate_action(self.action)
         return Rule(self.ga, condition, action)
 
     def matches(self, features):
-        return all(p == f or p == "#" for p, f in zip(self.condition, features))
+        return all(c == '#' or c[0] < f < c[1] for c, f in zip(self.condition, features))
 
     def copy(self):
         return Rule(self.ga, self.condition.copy(), self.action)
 
     @staticmethod
+    def random_bound(lower=None, upper=None):
+        lower = lower if lower is not None else -0.25
+        upper = upper if upper is not None else 1.25
+        return random.uniform(lower, upper)
+
+    @staticmethod
+    def random_bounds(surrounding=None):
+        lower = Rule.random_bound(upper=surrounding)
+        upper = Rule.random_bound(lower=max(lower, surrounding or 0))
+        return lower, upper
+
+    @staticmethod
     def generate(ga):
-        condition = random.choices((0, 1, '#'), k=ga.condition_size)
+        condition = random.choices((Rule.random_bounds(), '#'), k=ga.condition_size)
         action = random.choice((0, 1))
         return Rule(ga, condition, action)
 
     @staticmethod
     def load(ga, dump):
         *condition, action = dump.split(',')
-        condition = [c if c == '#' else int(float(c)) for c in condition]
+        condition = [c if c == '#' else list(map(float, c.split('~'))) for c in condition]
         action = int(action)
         return Rule(ga, condition, action)
 
     def dump(self):
-        return ','.join(map(str, (self.condition + [self.action])))
+        condition = [c if c == '#' else f'{c[0]}~{c[1]}' for c in self.condition]
+        return ','.join(map(str, (condition + [self.action])))
 
     @staticmethod
     def from_sample(ga, features, label):
-        return Rule(ga, features.copy(), int(label))
+        return Rule(ga, list(map(Rule.random_bounds, features)), int(label))
 
     def subsumes(self, other):
-        return all(s == o or s == '#' for s, o in zip(self.condition, other.condition))
+        return all(s == '#' or (o != '#' and s[0] <= o[0] and o[1] <= s[1])
+                   for s, o in zip(self.condition, other.condition))
 
 
 class Individual:
@@ -138,7 +158,10 @@ class Individual:
 
     @staticmethod
     def from_samples(ga, features, labels):
-        samples = random.choices(list(zip(features, labels)), k=ga.rule_count)
+        if ga.rule_count == len(labels):
+            samples = zip(features, labels)
+        else:
+            samples = random.choices(list(zip(features, labels)), k=ga.rule_count)
         rules = [Rule.from_sample(ga, f, l) for f, l in samples]
         return Individual(ga, rules)
 
@@ -170,20 +193,6 @@ class GA:
         self.dataset = 'datasets/2019/data2.txt'
         train_x, train_y, *_ = datasets.split(
             datasets.load_dataset(self.dataset, datasets.parse_binary_string_features))
-
-        # both dataset 3's are digital multiplexers, change to binary
-        if 'data3.txt' in self.dataset:
-            features = []
-            labels = []
-
-            for tx, ty in zip(train_x, train_y):
-                tx = [round(i) for i in tx]
-                if tx not in features:
-                    features.append(tx)
-                    labels.append(ty)
-
-            train_x = features
-            train_y = labels
 
         self.rule_count = len(train_x)
         self.condition_size = len(train_x[0])
@@ -266,8 +275,8 @@ class GA:
 
     def reduced_population(self, best):
         return [
-            best.remove_rule() if random.random() < self.distill_inheritance_chance \
-                else Individual.from_samples(self, self.train_x, self.train_y)
+            best.remove_rule() if random.random() < self.distill_inheritance_chance
+            else Individual.from_samples(self, self.train_x, self.train_y)
             for _ in range(self.population_size)
         ]
 
