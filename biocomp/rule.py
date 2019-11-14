@@ -190,9 +190,9 @@ class Individual:
 
 class GA:
     def __init__(self):
-        self.dataset = 'datasets/2019/data2.txt'
+        self.dataset = 'datasets/2019/data4.txt'
         train_x, train_y, *_ = datasets.split(
-            datasets.load_dataset(self.dataset, datasets.parse_binary_string_features))
+            datasets.load_dataset(self.dataset, datasets.parse_floating_point_features), 0.05)
 
         self.rule_count = len(train_x)
         self.condition_size = len(train_x[0])
