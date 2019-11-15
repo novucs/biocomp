@@ -14,6 +14,8 @@ private:
 public:
     Bounds(GeneticAlgorithm *ga, double upper, double lower);
 
+    explicit Bounds(GeneticAlgorithm *ga, double upper, double lower, bool general);
+
     explicit Bounds(GeneticAlgorithm *ga);
 
     bool is_generalisable();
@@ -22,9 +24,11 @@ public:
 
     bool contains(double feature);
 
+    Bounds *copy();
+
     std::string dump();
 
-    bool subsumes(Bounds other);
+    bool subsumes(Bounds *other);
 };
 
 Bounds *random_bounds(GeneticAlgorithm *ga, double surrounding);

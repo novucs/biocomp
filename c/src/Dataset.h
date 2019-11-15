@@ -19,7 +19,7 @@ public:
 
     Dataset(std::string filename, std::vector<std::vector<double>> *features, std::vector<int> *labels);
 
-    std::vector<Dataset> *split(std::vector<double> ways);
+    std::vector<Dataset *> *split(std::vector<double> ways);
 };
 
 #endif //C_DATASET_H

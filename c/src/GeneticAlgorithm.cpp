@@ -2,21 +2,24 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
-#include <gmpxx.h>
 #include <sstream>
-#include <bits/unordered_map.h>
+#include <unordered_map>
 #include "Individual.h"
+#include "Random.h"
 
-GeneticAlgorithm::GeneticAlgorithm() {
-    Dataset glob("../../datasets/2019/data3.txt");
-    datasets = glob.split({0.333, 0.333, 0.333});
-    this->train = &datasets->at(0);
-    this->cross_validation = &datasets->at(1);
-    this->test = &datasets->at(2);
+GeneticAlgorithm::GeneticAlgorithm(std::string dataset) {
+    this->dataset = dataset;
+    auto *datasets = Dataset(dataset).split({0.333, 0.333, 0.333});
+    this->train = datasets->at(0);
+    this->cross_validation = datasets->at(1);
+    this->test = datasets->at(2);
+    delete datasets;
 }
 
 GeneticAlgorithm::~GeneticAlgorithm() {
-    delete datasets;
+    delete train;
+    delete cross_validation;
+    delete test;
 }
 
 double GeneticAlgorithm::mutation_chance() {
@@ -34,36 +37,279 @@ int GeneticAlgorithm::get_rule_count() {
     return rule_count;
 }
 
+void GeneticAlgorithm::set_population(std::vector<Individual *> *new_population) {
+    if (population != nullptr) {
+        for (Individual *individual : *population) {
+            delete individual;
+        }
+    }
+    delete population;
+    population = new_population;
+}
+
 void GeneticAlgorithm::load_population(std::string filename) {
     std::ifstream datafile(filename);
 
-    Individual *best;
+    Individual *best = nullptr;
     int best_rule_count = std::numeric_limits<int>::max();
     double best_fitness = 0;
 
     for (std::string line; getline(datafile, line);) {
         std::stringstream ss(line);
         std::unordered_map<std::string, std::string> tags;
+
         for (std::string tag; std::getline(ss, tag, ' ');) {
             int index = tag.find(':');
             std::string key = tag.substr(0, index);
             std::string value = tag.substr(index + 1, tag.size());
-            // todo: finish this
-//            tags[key] = value;
+            tags[key] = value;
         }
 
         if (tags.size() == 0) {
             continue;
         }
 
-//        bool same_dataset = tags.find("dataset") == ;
+        bool same_dataset = tags["dataset"] == train->filename;
+        int solution_rule_count = std::stoi(tags["rule_count"]);
+        bool better_rule_count = solution_rule_count < best_rule_count;
+        bool equal_rule_count = solution_rule_count == best_rule_count;
+        bool better_fitness;
+
+        if (checkpoint_fitness) {
+            better_fitness = equal_rule_count && std::stod(tags["fitness"]) < best_fitness;
+        } else {
+            better_fitness = better_rule_count && std::stod(tags["fitness"]) >= fitness_threshold;
+        }
+
+        if (same_dataset && (better_rule_count || better_fitness)) {
+            best = load_individual(this, tags["rules"]);
+            best_fitness = std::stod(tags["fitness"]);
+            rule_count = best_rule_count = solution_rule_count;
+        }
     }
 
     datafile.close();
+
+    bool reduce_rule_count = best_fitness >= fitness_threshold;
+    if (reduce_rule_count) {
+        rule_count -= 1;
+    }
+
+    generate_population(best, reduce_rule_count);
+}
+
+void GeneticAlgorithm::generate_population(Individual *best, bool smaller) {
+    std::vector<Individual *> *new_population;
+    if (best == nullptr) {
+        new_population = generate_covered_population();
+    } else if (smaller) {
+        new_population = generate_reduced_population(best);
+    } else {
+        new_population = generate_similar_population(best);
+    }
+    set_population(new_population);
+}
+
+std::vector<Individual *> *GeneticAlgorithm::generate_similar_population(Individual *best) {
+    std::vector<Individual *> *target = generate_covered_population();
+    delete target->at(0);
+    target->at(0) = best;
+    return target;
+}
+
+std::vector<Individual *> *GeneticAlgorithm::generate_reduced_population(Individual *best) {
+    auto *target = new std::vector<Individual *>();
+    for (int i = 0; i < population_size; i++) {
+        if (rng() < distill_inheritance_chance) {
+            target->push_back(best->remove_rule());
+        } else {
+            target->push_back(individual_from_samples(this, train->features, train->labels));
+        }
+    }
+    return target;
+}
+
+std::vector<Individual *> *GeneticAlgorithm::generate_covered_population() {
+    auto *target = new std::vector<Individual *>();
+    for (int i = 0; i < population_size; i++) {
+        target->push_back(individual_from_samples(this, train->features, train->labels));
+    }
+    return target;
+}
+
+Individual *GeneticAlgorithm::tournament_selection(std::vector<double> *population_fitness) {
+    Individual *fittest = nullptr;
+    double fitness = -1;
+    for (int i = 0; i < tournament_size; i++) {
+        int index = rng() * population_size;
+        if (population_fitness->at(index) > fitness) {
+            fitness = population_fitness->at(index);
+            fittest = population->at(index);
+        }
+    }
+    return fittest;
+}
+
+Individual *GeneticAlgorithm::create_offspring(std::vector<double> *population_fitness) {
+    Individual *mum = tournament_selection(population_fitness);
+    Individual *dad = tournament_selection(population_fitness);
+    Individual *crossed = mum->crossover(dad);
+    Individual *mutated = crossed->mutate();
+    Individual *offspring = mutated;
+    delete crossed;
+
+    if (rng() < cover_chance) {
+        offspring = offspring->cover(train->features, train->labels);
+        delete mutated;
+    }
+
+    return offspring;
+}
+
+void GeneticAlgorithm::run() {
+    load_population("../solutions.txt");
+    generation = 0;
+    while (running) {
+        generation += 1;
+        train_step();
+        if (generation % 50 == 0) {
+            display_test_results();
+        }
+    }
+}
+
+void GeneticAlgorithm::display_test_results() {
+    std::vector<double> population_fitness;
+    Individual *best_individual = nullptr;
+    double best_fitness = -1;
+    double total_fitness = 0;
+
+    for (Individual *individual : *population) {
+        double fitness = individual->fitness(test->features, test->labels);
+        population_fitness.push_back(fitness);
+        total_fitness += fitness;
+
+        if (best_fitness < fitness) {
+            best_individual = individual;
+            best_fitness = fitness;
+        }
+    }
+
+    double mean_fitness = total_fitness / population_fitness.size();
+    printf("Test Set:\n");
+    printf("\tGeneration: %*d", 5, generation);
+    printf("\tBest Fitness: %.3f", best_fitness);
+    printf("\tMean Fitness: %.3f", mean_fitness);
+    printf("\tRule Count: %*d", 3, rule_count);
+    printf("\n");
+}
+
+void GeneticAlgorithm::train_step() {
+    std::vector<double> population_fitness;
+    Individual *best_individual = nullptr;
+    double best_fitness = -1;
+    double total_fitness = 0;
+
+    for (Individual *individual : *population) {
+        double fitness = individual->fitness(train->features, train->labels);
+        population_fitness.push_back(fitness);
+        total_fitness += fitness;
+
+        if (best_fitness < fitness) {
+            best_individual = individual;
+            best_fitness = fitness;
+        }
+    }
+
+    // do not continue to process when best individual not found
+    if (best_individual == nullptr) return;
+
+    double mean_fitness = total_fitness / population_fitness.size();
+
+    if (overall_best_fitness == best_fitness) {
+        delete overall_best;
+        overall_best = best_individual->copy();
+        overall_best_fitness = best_fitness;
+
+        // todo: save alternatives
+    }
+
+    if (overall_best_fitness < best_fitness) {
+        bool regenerated_population = found_new_best(best_individual, best_fitness);
+        if (regenerated_population) {
+            return;
+        }
+    }
+
+    if (generation % 1 == 0) {
+        printf("\tGeneration: %*d", 5, generation);
+        printf("\tBest Fitness: %.3f", best_fitness);
+        printf("\tMean Fitness: %.3f", mean_fitness);
+        printf("\tRule Count: %*d", 3, rule_count);
+        printf("\n");
+    }
+
+    auto *cross_validation_fitness = new std::vector<double>();
+    for (Individual *individual : *population) {
+        double fitness = individual->fitness(cross_validation->features, cross_validation->labels);
+        cross_validation_fitness->push_back(fitness);
+    }
+
+    auto *new_population = new std::vector<Individual *>();
+    for (int i = 0; i < (population_size - 1); i++) {
+        new_population->push_back(create_offspring(cross_validation_fitness));
+    }
+    new_population->push_back(overall_best->copy());
+    set_population(new_population);
+    delete cross_validation_fitness;
+}
+
+bool GeneticAlgorithm::found_new_best(Individual *best_individual, double best_fitness) {
+    if (best_fitness < fitness_threshold) {
+        delete overall_best;
+        overall_best = best_individual->copy();
+        overall_best_fitness = best_fitness;
+        return false;
+    }
+
+    Individual *compressed = best_individual->compress();
+    rule_count = compressed->rule_count();
+    printf("Found rule in %d generations with rule count of %d\n", generation, rule_count);
+    save_solution(best_individual, best_fitness, "../solutions.txt");
+
+    if (overall_best != nullptr) {
+        delete overall_best;
+    }
+
+    overall_best_fitness = -1;
+    rule_count -= 1;
+    generate_population(compressed, true);
+    return true;
+}
+
+void GeneticAlgorithm::save_solution(Individual *best, double test_fitness, std::string filename) {
+    if (test_fitness < fitness_threshold && !checkpoint_fitness) {
+        return;
+    }
+
+    time_t now = time(0);
+    struct tm tstruct = *localtime(&now);
+    char current_time[80];
+    strftime(current_time, sizeof(current_time), "%Y-%m-%d.%X", &tstruct);
+
+    std::ofstream file;
+    file.open(filename, std::ios::app);
+    file << "dataset:" << dataset << " ";
+    file << "rule_count:" << rule_count << " ";
+    file << "generation:" << generation << " ";
+    file << "fitness:" << test_fitness << " ";
+    file << "time:" << current_time << " ";
+    file << "rules:" << best->dump() << "\n";
+    file.close();
 }
 
 int main() {
-    auto *geneticAlgorithm = new GeneticAlgorithm();
+    auto *geneticAlgorithm = new GeneticAlgorithm("../../datasets/2019/data3.txt");
     geneticAlgorithm->run();
     delete geneticAlgorithm;
     return 0;

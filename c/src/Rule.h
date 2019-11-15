@@ -10,11 +10,11 @@ class GeneticAlgorithm;
 class Rule {
 private:
     GeneticAlgorithm *ga;
-    std::vector<Bounds> *condition;
+    std::vector<Bounds *> *condition;
     int action;
 public:
 
-    Rule(GeneticAlgorithm *ga, std::vector<Bounds> *condition, int action);
+    Rule(GeneticAlgorithm *ga, std::vector<Bounds *> *condition, int action);
 
     ~Rule();
 
@@ -32,7 +32,7 @@ public:
 
     std::string dump();
 
-    bool subsumes(Rule other);
+    bool subsumes(Rule *other);
 };
 
 Rule *generate_rule(GeneticAlgorithm *ga);

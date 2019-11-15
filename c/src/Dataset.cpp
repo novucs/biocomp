@@ -74,14 +74,14 @@ Dataset::Dataset(std::string filename, std::vector<std::vector<double>> *feature
     this->labels = labels;
 }
 
-std::vector<Dataset> *Dataset::split(std::vector<double> ways) {
+std::vector<Dataset *> *Dataset::split(std::vector<double> ways) {
     std::vector<int> indices;
     for (int i = 0; i < features->size(); i++) {
         indices.push_back(i);
     }
     std::random_shuffle(indices.begin(), indices.end());
 
-    auto *datasets = new std::vector<Dataset>();
+    auto *datasets = new std::vector<Dataset *>();
     int index = 0;
 
     for (double percent : ways) {
@@ -92,7 +92,7 @@ std::vector<Dataset> *Dataset::split(std::vector<double> ways) {
             new_features->push_back(features->at(indices.at(index)));
             new_labels->push_back(labels->at(indices.at(index)));
         }
-        Dataset dataset(filename, new_features, new_labels);
+        auto *dataset = new Dataset(filename, new_features, new_labels);
         datasets->push_back(dataset);
     }
 

@@ -3,9 +3,17 @@
 #include <sstream>
 #include "Bounds.h"
 #include "GeneticAlgorithm.h"
+#include "Random.h"
 
 double UPPER_LIMIT = 1.25;
 double LOWER_LIMIT = -0.25;
+
+Bounds::Bounds(GeneticAlgorithm *ga, double upper, double lower, bool general) {
+    this->ga = ga;
+    this->upper = upper;
+    this->lower = lower;
+    this->general = general;
+}
 
 Bounds::Bounds(GeneticAlgorithm *ga, double upper, double lower) {
     this->ga = ga;
@@ -27,15 +35,15 @@ bool Bounds::is_generalisable() {
 
 Bounds *Bounds::mutate() {
     if (is_generalisable()) {
-        return std::rand() < ga->mutation_chance() ? random_bounds(ga) : this;
+        return rng() < ga->mutation_chance() ? random_bounds(ga) : copy();
     }
 
-    if (std::rand() < ga->mutation_chance()) {
+    if (rng() < ga->mutation_chance()) {
         return new Bounds(ga);
     }
 
-    auto new_lower = std::rand() < ga->mutation_chance() ? ((upper * std::rand()) + LOWER_LIMIT) : lower;
-    auto new_upper = std::rand() < ga->mutation_chance() ? ((UPPER_LIMIT * std::rand()) + new_lower) : upper;
+    auto new_lower = rng() < ga->mutation_chance() ? ((upper * rng()) + LOWER_LIMIT) : lower;
+    auto new_upper = rng() < ga->mutation_chance() ? ((UPPER_LIMIT * rng()) + new_lower) : upper;
     return new Bounds(ga, new_upper, new_lower);
 }
 
@@ -46,6 +54,10 @@ bool Bounds::contains(double feature) {
     return lower < feature && feature < upper;
 }
 
+Bounds *Bounds::copy() {
+    return new Bounds(ga, upper, lower, general);
+}
+
 std::string Bounds::dump() {
     if (general) {
         return "#";
@@ -53,25 +65,25 @@ std::string Bounds::dump() {
     return std::to_string(lower) + "~" + std::to_string(upper);
 }
 
-bool Bounds::subsumes(Bounds other) {
+bool Bounds::subsumes(Bounds *other) {
     if (general) {
         return true;
     }
-    if (other.general) {
+    if (other->general) {
         return false;
     }
-    return lower <= other.lower && other.upper <= upper;
+    return lower <= other->lower && other->upper <= upper;
 }
 
 Bounds *random_bounds(GeneticAlgorithm *ga, double surrounding) {
-    double lower = (surrounding * std::rand()) + LOWER_LIMIT;
-    double upper = (UPPER_LIMIT * std::rand()) + surrounding;
+    double lower = uniform(LOWER_LIMIT, surrounding);
+    double upper = uniform(surrounding, UPPER_LIMIT);
     return new Bounds(ga, upper, lower);
 }
 
 Bounds *random_bounds(GeneticAlgorithm *ga) {
-    double lower = (UPPER_LIMIT * std::rand()) + LOWER_LIMIT;
-    double upper = ((UPPER_LIMIT - lower) * std::rand()) + lower;
+    double lower = uniform(LOWER_LIMIT, UPPER_LIMIT);
+    double upper = uniform(lower, UPPER_LIMIT);
     return new Bounds(ga, upper, lower);
 }
 
