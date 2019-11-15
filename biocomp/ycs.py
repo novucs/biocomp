@@ -162,7 +162,7 @@ class YCS:  # Y Learning Classifier System
                 error = learning_rate * (abs(reward - rule.payoff) - rule.error)
                 niche = learning_rate * (len(action_set) - rule.niche_factor)
                 payoff = learning_rate * (reward - rule.payoff)
-                # print('Error:', error, '\tNiche:', niche, '\tPayoff:', payoff)
+                print('Error:', error, '\tNiche:', niche, '\tPayoff:', payoff)
                 # print('Error:', rule.error, '\tNiche', rule.niche_factor,
                 #       '\tPayoff:', rule.payoff)
                 rule.error += error

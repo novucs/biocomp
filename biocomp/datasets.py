@@ -6,8 +6,11 @@ def parse_binary_string_features(features):
     return [float(i) for i in features[0]]
 
 
+def parse_rounded_features(features):
+    return [round(float(i)) for i in features]
+
+
 def parse_floating_point_features(features):
-    # return [round(float(i)) for i in features]
     return [float(i) for i in features]
 
 
@@ -63,17 +66,25 @@ def load_dataset_4():
     return load_new_dataset('data4.txt', parse_floating_point_features)
 
 
-def split(dataset, train_percent=1.0):
-    if train_percent >= 1.0:
+def split(dataset, train=1.0, cv=None):
+    if train >= 1.0:
         train_x, train_y = zip(*dataset)
         return train_x, train_y
 
-    if train_percent <= 0.0:
+    if train <= 0.0:
         test_x, test_y = zip(*dataset)
         return test_x, test_y
 
     random.shuffle(dataset)
-    index = int(len(dataset) * train_percent)
-    train_x, train_y = zip(*dataset[:index])
-    test_x, test_y = zip(*dataset[index:])
-    return train_x, train_y, test_x, test_y
+
+    test_index = int(len(dataset) * train)
+    cv_index = (int(len(dataset) * cv) if cv else 0) + test_index
+
+    train_x, train_y = zip(*dataset[:test_index])
+    test_x, test_y = zip(*dataset[cv_index:])
+
+    if cv is None:
+        return train_x, train_y, test_x, test_y
+
+    cv_x, cv_y = zip(*dataset[test_index:cv_index])
+    return cv_x, cv_y, train_x, train_y, test_x, test_y

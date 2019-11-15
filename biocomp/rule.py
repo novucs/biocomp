@@ -27,6 +27,9 @@ class Rule:
         if bounds == '#':
             return self.random_bounds() if random.random() < self.ga.mutation_chance else bounds
 
+        if random.random() < self.ga.mutation_chance:
+            return '#'
+
         lower, upper = bounds
         lower = Rule.random_bound(upper=upper) if random.random() < self.ga.mutation_chance else lower
         upper = Rule.random_bound(lower=lower) if random.random() < self.ga.mutation_chance else upper
@@ -191,30 +194,31 @@ class Individual:
 class GA:
     def __init__(self):
         self.dataset = 'datasets/2019/data4.txt'
-        train_x, train_y, *_ = datasets.split(
-            datasets.load_dataset(self.dataset, datasets.parse_floating_point_features), 0.05)
 
-        self.rule_count = len(train_x)
-        self.condition_size = len(train_x[0])
-        self.rule_size = len(train_x[0]) + 1
+        self.cv_x, self.cv_y, \
+        self.train_x, self.train_y, \
+        self.test_x, self.test_y = datasets.split(
+            datasets.load_dataset(self.dataset, datasets.parse_floating_point_features),
+            train=0.1,
+            cv=0.1,
+        )
+
+        self.rule_count = min(len(self.train_x), 5)
+        self.condition_size = len(self.train_x[0])
+        self.rule_size = len(self.train_x[0]) + 1
         self.population_size = 100
         self.generation_count = 10000
         self.crossover_chance = 0.5
         self.tournament_size = 5
         self.distill_inheritance_chance = 0.33
-        self.train_x = train_x
-        self.train_y = train_y
         self.population: List[Individual] = []
         self.overall_best = None
         self.overall_best_fitness = -float('inf')
         self.generation = 0
         self.checkpoint_fitness = False
         self.cover_chance = 0.1
-
         self.fitness_threshold = (59 / 60)
-        # self.fitness_threshold = 1.0
         self.noisy_prints = False
-
         self.alternatives = set()
 
     @property
@@ -224,7 +228,6 @@ class GA:
     @property
     def mutation_chance(self):
         return 1 / self.chromosome_size
-        # return 0.01
 
     def random_chromosome(self, index):
         return random.choice(
@@ -310,10 +313,27 @@ class GA:
         while True:
             self.generation += 1
             self.train_step()
+            if self.generation % 50 == 0:
+                self.test()
+
+    def test(self):
+        population_fitness = [i.fitness(self.test_x, self.test_y) for i in self.population]
+        best_fitness = max(population_fitness)
+        best_index = population_fitness.index(best_fitness)
+        best = self.population[best_index]
+        total_fitness = sum(population_fitness)
+        mean_fitness = total_fitness / self.population_size
+        print('Test Set:')
+        print(
+            '\t'
+            f'Generation: {self.generation:4} \t'
+            f'Best Fitness: {best_fitness:.3f} \t'
+            f'Mean Fitness: {mean_fitness:.3f} \t'
+            f'Rule Count: {self.rule_count:3}'
+        )
 
     def train_step(self):
-        population_fitness = [individual.fitness(self.train_x, self.train_y)
-                              for individual in self.population]
+        population_fitness = [i.fitness(self.train_x, self.train_y) for i in self.population]
         best_fitness = max(population_fitness)
         best_index = population_fitness.index(best_fitness)
         best = self.population[best_index].cover(self.train_x, self.train_y)
@@ -332,14 +352,11 @@ class GA:
                 self.checkpoint_fitness = True
                 self.save_solution(best, best_fitness, 'alternatives.txt')
                 self.checkpoint_fitness = False
-            elif random.random() < self.mutation_chance:
-                self.load_population()
 
         if best_fitness > self.overall_best_fitness:
             regenerated_population = self.found_new_best(best, best_fitness)
             if regenerated_population:
                 return
-            self.save_solution(best, best_fitness)
 
         if self.generation % 5 == 0:
             print(
@@ -349,6 +366,7 @@ class GA:
                 f'Rule Count: {self.rule_count:3} \t'
             )
 
+        population_fitness = [i.fitness(self.cv_x, self.cv_y) for i in self.population]
         self.population = [self.create_offspring(population_fitness) for _ in range(self.population_size - 1)]
         self.population.append(self.overall_best)
 
@@ -360,13 +378,9 @@ class GA:
 
         best = best.compress()
         self.rule_count = best.rule_count
-
-        lines = [f'Found rule in {self.generation} generations '
-                 f'with rule count of {self.rule_count}:']
-
-        self.save_solution(best, best_fitness)
-
-        print('\n'.join(lines))
+        print(f'Found rule in {self.generation} generations '
+              f'with rule count of {self.rule_count}')
+        self.save_solution(best, best_fitness, 'solutions/' + self.dataset.split('/')[-1])
 
         self.overall_best = None
         self.overall_best_fitness = -float('inf')
@@ -374,8 +388,8 @@ class GA:
         self.generate_population(best)
         return True
 
-    def save_solution(self, best, fitness, file='solutions.txt'):
-        if fitness < self.fitness_threshold and not self.checkpoint_fitness:
+    def save_solution(self, best, test_fitness, file='solutions.txt'):
+        if test_fitness < self.fitness_threshold and not self.checkpoint_fitness:
             return
 
         with open(file, 'a') as f:
@@ -383,7 +397,7 @@ class GA:
                 f'dataset:{self.dataset} '
                 f'rule_count:{self.rule_count} '
                 f'generation:{self.generation} '
-                f'fitness:{fitness} '
+                f'fitness:{test_fitness} '
                 f'time:{str(datetime.now()).replace(" ", "_")} '
                 f'rules:{best.dump()}'
                 f'\n'
