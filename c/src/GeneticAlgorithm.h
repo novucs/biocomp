@@ -29,6 +29,11 @@ private:
     bool verbose = false;
     bool running = true;
 
+    // simulated annealing - increasing/decreasing rule count
+    double cooling_rate = 0.001;
+    double temperature = 1.0;
+    int generations_since_success = 0; // may be of use for increasing temperature + rule count
+
 public:
     GeneticAlgorithm(std::string dataset, std::vector<double> splits);
 
