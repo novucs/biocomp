@@ -7,12 +7,12 @@
 #include "Individual.h"
 #include "Random.h"
 
-GeneticAlgorithm::GeneticAlgorithm(std::string dataset) {
+GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> splits) {
     this->dataset = dataset;
-    auto *datasets = Dataset(dataset).split({0.1, 0.1, 1.0});
+    auto *datasets = Dataset(dataset).split(splits);
     this->train = datasets->at(0);
-    this->cross_validation = datasets->at(1);
-    this->test = datasets->at(2);
+    this->test = datasets->size() < 2 ? this->train : datasets->at(datasets->size() - 1);
+    this->cross_validation = datasets->size() < 3 ? this->test : datasets->at(1);
     delete datasets;
 }
 
@@ -88,6 +88,7 @@ void GeneticAlgorithm::load_population(std::string filename) {
     }
 
     generate_population(best, reduce_rule_count);
+    delete best;
 }
 
 void GeneticAlgorithm::generate_population(Individual *best, bool smaller) {
@@ -105,7 +106,7 @@ void GeneticAlgorithm::generate_population(Individual *best, bool smaller) {
 std::vector<Individual *> *GeneticAlgorithm::generate_similar_population(Individual *best) {
     std::vector<Individual *> *target = generate_covered_population();
     delete target->at(0);
-    target->at(0) = best;
+    target->at(0) = best->copy();
     return target;
 }
 
@@ -199,12 +200,12 @@ void GeneticAlgorithm::train_step() {
     auto *train_fitness = new std::vector<double>();
     Individual *best_individual = nullptr;
     double best_fitness = -1;
-    double total_fitness = 0;
+    double total_train_fitness = 0;
 
     for (Individual *individual : *population) {
         double fitness = individual->fitness(train->features, train->labels);
         train_fitness->push_back(fitness);
-        total_fitness += fitness;
+        total_train_fitness += fitness;
 
         if (best_fitness < fitness) {
             best_individual = individual;
@@ -218,7 +219,7 @@ void GeneticAlgorithm::train_step() {
         return;
     }
 
-    double mean_fitness = total_fitness / train_fitness->size();
+    double mean_fitness = total_train_fitness / train_fitness->size();
 
     if (overall_best_fitness < best_fitness) {
         if (overall_best != nullptr) {
@@ -242,16 +243,25 @@ void GeneticAlgorithm::train_step() {
         printf("\n");
     }
 
+    double total_cross_validation_fitness = 0;
     auto *cross_validation_fitness = new std::vector<double>();
     for (Individual *individual : *population) {
         double fitness = individual->fitness(cross_validation->features, cross_validation->labels);
         cross_validation_fitness->push_back(fitness);
+        total_cross_validation_fitness += fitness;
     }
+    double cross_validation_mean_fitness = total_cross_validation_fitness / cross_validation->features->size();
+    double mean_fitness_difference = std::max(0.0, mean_fitness - cross_validation_mean_fitness);
 
     auto *new_population = new std::vector<Individual *>();
     for (int i = 0; i < (population_size - 1); i++) {
-        new_population->push_back(create_offspring(cross_validation_fitness));
-//        new_population->push_back(create_offspring(train_fitness));
+        // todo: see if rule count could be used here
+        // weigh selection fitness by that of the cross-validation set when over fitting
+        if ((rng() * mean_fitness_difference) < selection_switch_threshold) {
+            new_population->push_back(create_offspring(cross_validation_fitness));
+        } else {
+            new_population->push_back(create_offspring(train_fitness));
+        }
     }
     new_population->push_back(overall_best->copy());
     set_population(new_population);
@@ -277,6 +287,7 @@ bool GeneticAlgorithm::found_new_best(Individual *best_individual, double best_f
     overall_best_fitness = -1;
     rule_count -= 1;
     generate_population(compressed, true);
+    delete compressed;
     return true;
 }
 
@@ -299,11 +310,4 @@ void GeneticAlgorithm::save_solution(Individual *best, double test_fitness, std:
     file << "time:" << current_time << " ";
     file << "rules:" << best->dump() << std::endl;
     file.close();
-}
-
-int main() {
-    auto *geneticAlgorithm = new GeneticAlgorithm("../../datasets/2019/data4.txt");
-    geneticAlgorithm->run();
-    delete geneticAlgorithm;
-    return 0;
 }

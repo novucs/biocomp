@@ -8,11 +8,11 @@ class GeneticAlgorithm;
 class Individual {
 private:
     GeneticAlgorithm *ga;
-    std::vector<Rule*> *rules;
+    std::vector<Rule *> *rules;
 public:
     Individual(GeneticAlgorithm *ga);
 
-    Individual(GeneticAlgorithm *ga, std::vector<Rule*> *rules);
+    Individual(GeneticAlgorithm *ga, std::vector<Rule *> *rules);
 
     ~Individual();
 

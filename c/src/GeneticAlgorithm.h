@@ -16,20 +16,21 @@ private:
     int population_size = 100;
     int generation_count = 1000;
     double crossover_chance = 0.5;
+    double selection_switch_threshold = 0.1;
     int tournament_size = 5;
     double distill_inheritance_chance = 0.33;
-    std::vector<Individual *> *population;
+    std::vector<Individual *> *population = nullptr;
     Individual *overall_best = nullptr;
     double overall_best_fitness;
     int generation = 0;
     bool checkpoint_fitness = false;
     double cover_chance = 0.1;
-    double fitness_threshold = 59 / (double) 60;
+    double fitness_threshold = 60 / (double) 60;
     bool verbose = false;
     bool running = true;
 
 public:
-    GeneticAlgorithm(std::string dataset);
+    GeneticAlgorithm(std::string dataset, std::vector<double> splits);
 
     ~GeneticAlgorithm();
 

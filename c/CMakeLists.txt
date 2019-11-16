@@ -3,4 +3,4 @@ project(c)
 
 set(CMAKE_CXX_STANDARD 14)
 file(GLOB source_files "src/*.h" "src/*.cpp")
-add_executable(c ${source_files})
+add_executable(c ${source_files} src/Main.cpp src/Main.h)

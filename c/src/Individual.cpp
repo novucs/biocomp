@@ -1,4 +1,5 @@
 #include <sstream>
+#include <iostream>
 #include "Individual.h"
 #include "GeneticAlgorithm.h"
 #include "Random.h"
@@ -134,7 +135,6 @@ bool Individual::is_subsumed(int rule_index) {
     return false;
 }
 
-
 Individual *Individual::compress() {
     auto *new_rules = new std::vector<Rule *>();
     for (int i = 0; i < rules->size(); i++) {
@@ -149,13 +149,20 @@ Individual *Individual::compress() {
 
 Individual *Individual::cover(std::vector<std::vector<double>> *features, std::vector<int> *labels) {
     std::vector<int> wrong_classifications;
+    auto *individual = compress();
+
     for (int i = 0; i < features->size(); i++) {
-        if (evaluate(&features->at(i)) != labels->at(i)) {
+        for (int j = 0; j < individual->rule_count(); j++) {
+            Rule *rule = individual->rules->at(j);
+            if (!rule->matches(&features->at(i)) || rule->get_action() == labels->at(i)) {
+                continue;
+            }
+
             wrong_classifications.push_back(i);
+            individual->rules->erase(individual->rules->begin() + j);
+            break;
         }
     }
-
-    auto *individual = compress();
 
     // cover missing rules using dataset samples this individual classifies wrongly
     int missing_rules = ga->get_rule_count() - individual->rule_count();
