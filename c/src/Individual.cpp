@@ -113,10 +113,15 @@ std::string Individual::dump() {
 }
 
 Individual *Individual::remove_rule() {
-    auto *individual = copy();
-    int index = individual->rules->size() * rng();
-    individual->rules->erase(individual->rules->begin() + index);
-    return individual;
+    auto *new_rules = new std::vector<Rule *>();
+    int index = ((double) rules->size()) * rng();
+    for (int i = 0; i < rules->size(); i++) {
+        if (i == index) {
+            continue;
+        }
+        new_rules->push_back(rules->at(i)->copy());
+    }
+    return new Individual(ga, new_rules);
 }
 
 
@@ -173,39 +178,39 @@ Individual *Individual::cover(std::vector<std::vector<double>> *features, std::v
 }
 
 Individual *generate_individual(GeneticAlgorithm *ga) {
-    auto *rules = new std::vector<Rule *>();
+    auto *new_rules = new std::vector<Rule *>();
     for (int i = 0; i < ga->get_rule_count(); i++) {
-        rules->push_back(generate_rule(ga));
+        new_rules->push_back(generate_rule(ga));
     }
-    return new Individual(ga, rules);
+    return new Individual(ga, new_rules);
 }
 
 Individual *load_individual(GeneticAlgorithm *ga, std::string dump) {
-    auto *rules = new std::vector<Rule *>();
+    auto *new_rules = new std::vector<Rule *>();
     std::stringstream ss(dump);
     for (int i = 0; i < ga->get_rule_count(); i++) {
         std::string substr;
         std::getline(ss, substr, '|');
-        rules->push_back(load_rule(ga, substr));
+        new_rules->push_back(load_rule(ga, substr));
     }
-    return new Individual(ga, rules);
+    return new Individual(ga, new_rules);
 }
 
 Individual *
 individual_from_samples(GeneticAlgorithm *ga, std::vector<std::vector<double>> *features, std::vector<int> *labels) {
-    auto *rules = new std::vector<Rule *>();
+    auto *new_rules = new std::vector<Rule *>();
     if (ga->get_rule_count() == features->size()) {
         // load 1 to 1 mapping of rules to dataset features for instant 100% fitness at this rule count
         for (int i = 0; i < features->size(); i++) {
             Rule *rule = rule_from_sample(ga, &features->at(i), labels->at(i));
-            rules->push_back(rule);
+            new_rules->push_back(rule);
         }
     } else {
         for (int i = 0; i < ga->get_rule_count(); i++) {
             int index = rng() * features->size();
             Rule *rule = rule_from_sample(ga, &features->at(index), labels->at(index));
-            rules->push_back(rule);
+            new_rules->push_back(rule);
         }
     }
-    return new Individual(ga, rules);
+    return new Individual(ga, new_rules);
 }

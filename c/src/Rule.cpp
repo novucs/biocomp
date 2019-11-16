@@ -2,6 +2,8 @@
 
 #include <cmath>
 #include <sstream>
+#include <iostream>
+#include <unordered_set>
 #include "GeneticAlgorithm.h"
 #include "Random.h"
 
@@ -112,9 +114,9 @@ Rule *load_rule(GeneticAlgorithm *ga, std::string dump) {
 }
 
 Rule *rule_from_sample(GeneticAlgorithm *ga, std::vector<double> *features, int label) {
-    auto *condition = new std::vector<Bounds *>();
+    auto *new_condition = new std::vector<Bounds *>();
     for (double feature : *features) {
-        condition->push_back(random_bounds(ga, feature));
+        new_condition->push_back(random_bounds(ga, feature));
     }
-    return new Rule(ga, condition, label);
+    return new Rule(ga, new_condition, label);
 }

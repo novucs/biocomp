@@ -9,7 +9,7 @@
 
 GeneticAlgorithm::GeneticAlgorithm(std::string dataset) {
     this->dataset = dataset;
-    auto *datasets = Dataset(dataset).split({0.333, 0.333, 0.333});
+    auto *datasets = Dataset(dataset).split({0.1, 0.1, 1.0});
     this->train = datasets->at(0);
     this->cross_validation = datasets->at(1);
     this->test = datasets->at(2);
@@ -71,20 +71,12 @@ void GeneticAlgorithm::load_population(std::string filename) {
 
         bool same_dataset = tags["dataset"] == train->filename;
         int solution_rule_count = std::stoi(tags["rule_count"]);
-        bool better_rule_count = solution_rule_count < best_rule_count;
-        bool equal_rule_count = solution_rule_count == best_rule_count;
-        bool better_fitness;
+        bool good_fitness = std::stod(tags["fitness"]) >= fitness_threshold;
 
-        if (checkpoint_fitness) {
-            better_fitness = equal_rule_count && std::stod(tags["fitness"]) < best_fitness;
-        } else {
-            better_fitness = better_rule_count && std::stod(tags["fitness"]) >= fitness_threshold;
-        }
-
-        if (same_dataset && (better_rule_count || better_fitness)) {
+        if (same_dataset && solution_rule_count < best_rule_count && good_fitness) {
+            rule_count = best_rule_count = solution_rule_count;
             best = load_individual(this, tags["rules"]);
             best_fitness = std::stod(tags["fitness"]);
-            rule_count = best_rule_count = solution_rule_count;
         }
     }
 
@@ -196,23 +188,22 @@ void GeneticAlgorithm::display_test_results() {
     }
 
     double mean_fitness = total_fitness / population_fitness.size();
-    printf("Test Set:\n");
-    printf("\tGeneration: %*d", 5, generation);
-    printf("\tBest Fitness: %.3f", best_fitness);
-    printf("\tMean Fitness: %.3f", mean_fitness);
-    printf("\tRule Count: %*d", 3, rule_count);
-    printf("\n");
+    printf("Generation: %*d ", 5, generation);
+    printf("\tBest Fitness: %.3f ", best_fitness);
+    printf("\tMean Fitness: %.3f ", mean_fitness);
+    printf("\tRule Count: %*d ", 3, rule_count);
+    printf("\t<--- Test Set\n");
 }
 
 void GeneticAlgorithm::train_step() {
-    std::vector<double> population_fitness;
+    auto *train_fitness = new std::vector<double>();
     Individual *best_individual = nullptr;
     double best_fitness = -1;
     double total_fitness = 0;
 
     for (Individual *individual : *population) {
         double fitness = individual->fitness(train->features, train->labels);
-        population_fitness.push_back(fitness);
+        train_fitness->push_back(fitness);
         total_fitness += fitness;
 
         if (best_fitness < fitness) {
@@ -222,30 +213,32 @@ void GeneticAlgorithm::train_step() {
     }
 
     // do not continue to process when best individual not found
-    if (best_individual == nullptr) return;
+    if (best_individual == nullptr) {
+        delete train_fitness;
+        return;
+    }
 
-    double mean_fitness = total_fitness / population_fitness.size();
+    double mean_fitness = total_fitness / train_fitness->size();
 
-    if (overall_best_fitness == best_fitness) {
-        delete overall_best;
+    if (overall_best_fitness < best_fitness) {
+        if (overall_best != nullptr) {
+            delete overall_best;
+        }
         overall_best = best_individual->copy();
         overall_best_fitness = best_fitness;
 
-        // todo: save alternatives
-    }
-
-    if (overall_best_fitness < best_fitness) {
         bool regenerated_population = found_new_best(best_individual, best_fitness);
         if (regenerated_population) {
+            delete train_fitness;
             return;
         }
     }
 
-    if (generation % 1 == 0) {
-        printf("\tGeneration: %*d", 5, generation);
-        printf("\tBest Fitness: %.3f", best_fitness);
-        printf("\tMean Fitness: %.3f", mean_fitness);
-        printf("\tRule Count: %*d", 3, rule_count);
+    if (generation % 5 == 0) {
+        printf("Generation: %*d ", 5, generation);
+        printf("\tBest Fitness: %.3f ", best_fitness);
+        printf("\tMean Fitness: %.3f ", mean_fitness);
+        printf("\tRule Count: %*d ", 3, rule_count);
         printf("\n");
     }
 
@@ -258,10 +251,12 @@ void GeneticAlgorithm::train_step() {
     auto *new_population = new std::vector<Individual *>();
     for (int i = 0; i < (population_size - 1); i++) {
         new_population->push_back(create_offspring(cross_validation_fitness));
+//        new_population->push_back(create_offspring(train_fitness));
     }
     new_population->push_back(overall_best->copy());
     set_population(new_population);
     delete cross_validation_fitness;
+    delete train_fitness;
 }
 
 bool GeneticAlgorithm::found_new_best(Individual *best_individual, double best_fitness) {
@@ -277,10 +272,8 @@ bool GeneticAlgorithm::found_new_best(Individual *best_individual, double best_f
     printf("Found rule in %d generations with rule count of %d\n", generation, rule_count);
     save_solution(best_individual, best_fitness, "../solutions.txt");
 
-    if (overall_best != nullptr) {
-        delete overall_best;
-    }
-
+    delete overall_best;
+    overall_best = nullptr;
     overall_best_fitness = -1;
     rule_count -= 1;
     generate_population(compressed, true);
@@ -300,16 +293,16 @@ void GeneticAlgorithm::save_solution(Individual *best, double test_fitness, std:
     std::ofstream file;
     file.open(filename, std::ios::app);
     file << "dataset:" << dataset << " ";
-    file << "rule_count:" << rule_count << " ";
+    file << "rule_count:" << best->rule_count() << " ";
     file << "generation:" << generation << " ";
     file << "fitness:" << test_fitness << " ";
     file << "time:" << current_time << " ";
-    file << "rules:" << best->dump() << "\n";
+    file << "rules:" << best->dump() << std::endl;
     file.close();
 }
 
 int main() {
-    auto *geneticAlgorithm = new GeneticAlgorithm("../../datasets/2019/data3.txt");
+    auto *geneticAlgorithm = new GeneticAlgorithm("../../datasets/2019/data4.txt");
     geneticAlgorithm->run();
     delete geneticAlgorithm;
     return 0;
