@@ -4,15 +4,20 @@
 #include <fstream>
 #include <sstream>
 #include <unordered_map>
+#include <atomic>
 #include "Individual.h"
 #include "Random.h"
 
-GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> splits) : dataset(dataset) {
+GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> splits) : dataset_name(dataset) {
     auto datasets = Dataset(dataset).split(splits);
     train = datasets.at(0);
     test = datasets.size() < 2 ? train : datasets.at(datasets.size() - 1);
     cross_validation = datasets.size() < 3 ? test : datasets.at(1);
-    overall_best = generate_individual(this);
+    executor = new ThreadPool();
+}
+
+GeneticAlgorithm::~GeneticAlgorithm() {
+    delete executor;
 }
 
 double GeneticAlgorithm::mutation_chance() {
@@ -140,112 +145,86 @@ void GeneticAlgorithm::run() {
 }
 
 void GeneticAlgorithm::display_test_results() {
-    std::vector<double> population_fitness;
-    double best_fitness = -1;
-    double total_fitness = 0;
-
-    for (Individual &individual : population) {
-        double fitness = individual.fitness(test);
-        population_fitness.push_back(fitness);
-        total_fitness += fitness;
-
-        if (best_fitness < fitness) {
-            best_fitness = fitness;
-        }
-    }
-
-    double mean_fitness = total_fitness / population_fitness.size();
     printf("Generation: %*d ", 5, generation);
-    printf("\tBest Fitness: %.3f ", best_fitness);
-    printf("\tMean Fitness: %.3f ", mean_fitness);
+    printf("\tBest Fitness: %.3f ", test_fitness.best);
+    printf("\tMean Fitness: %.3f ", test_fitness.mean);
     printf("\tRule Count: %*d ", 3, rule_count);
     printf("\t<--- Test Set\n");
 }
 
 void GeneticAlgorithm::train_step() {
-    std::vector<double> train_fitness;
-    Individual best_individual = generate_individual(this);
-    double best_fitness = -1;
-    double total_train_fitness = 0;
+    update_fitness();
 
-    for (Individual &individual : population) {
-        double fitness = individual.fitness(train);
-        train_fitness.push_back(fitness);
-        total_train_fitness += fitness;
-
-        if (best_fitness < fitness) {
-            best_individual = individual;
-            best_fitness = fitness;
-        }
-    }
-
-    double mean_fitness = total_train_fitness / train_fitness.size();
-
-    if (overall_best_fitness < best_fitness) {
-        overall_best = best_individual;
-        overall_best_fitness = best_fitness;
-
-        bool regenerated_population = found_new_best(best_individual, best_fitness);
-        if (regenerated_population) {
+    if (overall_best_fitness < train_fitness.best) {
+        overall_best = Individual(train_fitness.best_individual);
+        overall_best_fitness = train_fitness.best;
+        if (fitness_threshold < overall_best_fitness) {
+            found_new_best();
             return;
         }
     }
 
     if (generation % 5 == 0) {
         printf("Generation: %*d ", 5, generation);
-        printf("\tBest Fitness: %.3f ", best_fitness);
-        printf("\tMean Fitness: %.3f ", mean_fitness);
+        printf("\tBest Fitness: %.3f ", train_fitness.best);
+        printf("\tMean Fitness: %.3f ", train_fitness.mean);
         printf("\tRule Count: %*d ", 3, rule_count);
         printf("\n");
     }
 
-    double total_cross_validation_fitness = 0;
-    std::vector<double> cross_validation_fitness;
-    for (Individual &individual : population) {
-        double fitness = individual.fitness(cross_validation);
-        cross_validation_fitness.push_back(fitness);
-        total_cross_validation_fitness += fitness;
-    }
-    double cross_validation_mean_fitness = total_cross_validation_fitness / cross_validation.features.size();
-    double mean_fitness_difference = std::max(0.0, mean_fitness - cross_validation_mean_fitness);
+    double mean_fitness_difference = std::max(0.0, train_fitness.mean - cross_validation_fitness.mean);
 
     std::vector<Individual> new_population;
     for (int i = 0; i < (population_size - 1); i++) {
         // todo: see if rule count could be used here
         // weigh selection fitness by that of the cross-validation set when over fitting
-        if ((rng() * mean_fitness_difference) < selection_switch_threshold) {
-            new_population.push_back(create_offspring(cross_validation_fitness));
+        if ((rng() * mean_fitness_difference) > selection_switch_threshold) {
+            new_population.push_back(create_offspring(cross_validation_fitness.values));
         } else {
-            new_population.push_back(create_offspring(train_fitness));
+            new_population.push_back(create_offspring(train_fitness.values));
         }
     }
-    new_population.push_back(overall_best);
+
+    new_population.push_back(Individual(overall_best));
     population = new_population;
 }
 
-bool GeneticAlgorithm::found_new_best(Individual &best_individual, double best_fitness) {
-    if (best_fitness < fitness_threshold) {
-        overall_best = best_individual;
-        overall_best_fitness = best_fitness;
-        return false;
+void GeneticAlgorithm::update_fitness() {
+    std::atomic<int> updated(0);
+
+    executor->submit([this, &updated] {
+        train_fitness = fitness_aggregate_of(train, population);
+        updated += 1;
+    });
+
+    executor->submit([this, &updated] {
+        cross_validation_fitness = fitness_aggregate_of(cross_validation, population);
+        updated += 1;
+    });
+
+    executor->submit([this, &updated] {
+        test_fitness = fitness_aggregate_of(test, population);
+        updated += 1;
+    });
+
+    while (updated != 3) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        continue;
     }
+}
 
-    Individual compressed = best_individual.compress();
-    rule_count = compressed.rule_count();
+bool GeneticAlgorithm::found_new_best() {
+    overall_best = overall_best.compress();
+    rule_count = overall_best.rule_count();
     printf("Found rule in %d generations with rule count of %d\n", generation, rule_count);
-    save_solution(best_individual, best_fitness, "../solutions.txt");
-
+    save_solution("../solutions.txt");
     overall_best_fitness = -1;
     rule_count -= 1;
-    population = generate_reduced_population(compressed);
+    population = generate_reduced_population(overall_best);
     return true;
 }
 
-void GeneticAlgorithm::save_solution(Individual &best, double test_fitness, std::string filename) {
-    if (test_fitness < fitness_threshold && !checkpoint_fitness) {
-        return;
-    }
-
+void GeneticAlgorithm::save_solution(std::string filename) {
     time_t now = time(0);
     struct tm *tstruct = localtime(&now);
     char current_time[80];
@@ -254,11 +233,11 @@ void GeneticAlgorithm::save_solution(Individual &best, double test_fitness, std:
 
     std::ofstream file;
     file.open(filename, std::ios::app);
-    file << "dataset:" << dataset << " ";
-    file << "rule_count:" << best.rule_count() << " ";
+    file << "dataset:" << dataset_name << " ";
+    file << "rule_count:" << overall_best.rule_count() << " ";
     file << "generation:" << generation << " ";
-    file << "fitness:" << test_fitness << " ";
+    file << "fitness:" << test_fitness.best << " ";
     file << "time:" << current_time << " ";
-    file << "rules:" << best.dump() << std::endl;
+    file << "rules:" << overall_best.dump() << std::endl;
     file.close();
 }

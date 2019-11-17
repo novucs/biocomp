@@ -9,6 +9,9 @@ double LOWER_LIMIT = -0.25;
 Bounds::Bounds(GeneticAlgorithm *ga, double lower, double upper, bool wildcard) : ga(ga), lower(lower), upper(upper),
                                                                                   wildcard(wildcard) {}
 
+Bounds::Bounds(const Bounds &bounds) : ga(bounds.ga), lower(bounds.lower), upper(bounds.upper),
+                                       wildcard(bounds.wildcard) {}
+
 bool Bounds::is_wildcard() {
     return wildcard;
 }

@@ -14,6 +14,8 @@ private:
 public:
     Bounds(GeneticAlgorithm *ga, double lower, double upper, bool wildcard);
 
+    Bounds(const Bounds &bounds);
+
     bool is_wildcard();
 
     Bounds mutate();

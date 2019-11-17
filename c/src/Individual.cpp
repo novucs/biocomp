@@ -4,9 +4,13 @@
 #include "GeneticAlgorithm.h"
 #include "Random.h"
 
+Individual::Individual() {}
+
 Individual::Individual(GeneticAlgorithm *ga) : ga(ga) {}
 
 Individual::Individual(GeneticAlgorithm *ga, const std::vector<Rule> &rules) : ga(ga), rules(rules) {}
+
+Individual::Individual(const Individual &individual) : ga(individual.ga), rules(individual.rules) {}
 
 double Individual::generalisation() {
     int generalisation = 0;
@@ -161,6 +165,10 @@ Individual Individual::cover(Dataset &dataset) {
     }
 
     return individual;
+}
+
+Individual dummy_individual() {
+    return Individual();
 }
 
 Individual generate_individual(GeneticAlgorithm *ga) {

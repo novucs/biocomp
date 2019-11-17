@@ -13,8 +13,9 @@ private:
     std::vector<Bounds> condition;
     int action;
 public:
-
     Rule(GeneticAlgorithm *ga, const std::vector<Bounds> &condition, int action);
+
+    Rule(const Rule &rule);
 
     int get_action();
 

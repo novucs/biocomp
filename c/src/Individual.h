@@ -15,6 +15,8 @@ public:
 
     Individual(GeneticAlgorithm *ga, const std::vector<Rule> &rules);
 
+    Individual(const Individual &individual);
+
     double generalisation();
 
     int rule_count();
@@ -42,7 +44,11 @@ public:
     Individual compress();
 
     Individual cover(Dataset &dataset);
+
+    Individual();
 };
+
+Individual dummy_individual();
 
 Individual generate_individual(GeneticAlgorithm *ga);
 

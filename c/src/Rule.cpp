@@ -10,6 +10,8 @@
 Rule::Rule(GeneticAlgorithm *ga, const std::vector<Bounds> &condition, int action) : ga(ga), condition(condition),
                                                                                      action(action) {}
 
+Rule::Rule(const Rule &rule) : ga(rule.ga), condition(rule.condition), action(rule.action) {}
+
 double Rule::generalisation() {
     int hash_count = 0;
     for (Bounds &bounds : condition) {

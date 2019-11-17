@@ -4,13 +4,16 @@
 #include <vector>
 #include "Dataset.h"
 #include "Individual.h"
+#include "FitnessAggregate.h"
+#include "ThreadPool.h"
 
 class GeneticAlgorithm {
 private:
-    std::string dataset;
+    std::string dataset_name;
     Dataset train = Dataset();
     Dataset cross_validation = Dataset();
     Dataset test = Dataset();
+    ThreadPool *executor;
     int rule_count = 60;
     int population_size = 100;
     int generation_count = 1000;
@@ -19,7 +22,10 @@ private:
     int tournament_size = 5;
     double distill_inheritance_chance = 0.33;
     std::vector<Individual> population = std::vector<Individual>();
-    Individual overall_best = Individual(this);
+    Individual overall_best = dummy_individual();
+    FitnessAggregate train_fitness = FitnessAggregate();
+    FitnessAggregate cross_validation_fitness = FitnessAggregate();
+    FitnessAggregate test_fitness = FitnessAggregate();
     double overall_best_fitness = -1;
     int generation = 0;
     bool checkpoint_fitness = false;
@@ -35,6 +41,8 @@ private:
 
 public:
     GeneticAlgorithm(std::string dataset, std::vector<double> splits);
+
+    virtual ~GeneticAlgorithm();
 
     double mutation_chance();
 
@@ -60,9 +68,11 @@ public:
 
     void train_step();
 
-    bool found_new_best(Individual &best_individual, double best_fitness);
+    bool found_new_best();
 
-    void save_solution(Individual &best, double test_fitness, std::string filename);
+    void save_solution(std::string filename);
+
+    void update_fitness();
 };
 
 #endif //C_GENETICALGORITHM_H
