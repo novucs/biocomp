@@ -2,6 +2,7 @@
 #define C_INDIVIDUAL_H
 
 #include "Rule.h"
+#include "Dataset.h"
 
 class GeneticAlgorithm;
 
@@ -28,9 +29,9 @@ public:
 
     int evaluate(std::vector<double> &features);
 
-    int correct_count(std::vector<std::vector<double>> &features, std::vector<int> &labels);
+    int correct_count(Dataset &dataset);
 
-    double fitness(std::vector<std::vector<double>> &features, std::vector<int> &labels);
+    double fitness(Dataset &dataset);
 
     std::string dump();
 
@@ -40,7 +41,7 @@ public:
 
     Individual compress();
 
-    Individual cover(std::vector<std::vector<double>> &features, std::vector<int> &labels);
+    Individual cover(Dataset &dataset);
 };
 
 Individual generate_individual(GeneticAlgorithm *ga);
@@ -48,6 +49,6 @@ Individual generate_individual(GeneticAlgorithm *ga);
 Individual load_individual(GeneticAlgorithm *ga, std::string dump);
 
 Individual
-individual_from_samples(GeneticAlgorithm *ga, std::vector<std::vector<double>> &features, std::vector<int> &labels);
+individual_from_samples(GeneticAlgorithm *ga, Dataset &dataset);
 
 #endif //C_INDIVIDUAL_H

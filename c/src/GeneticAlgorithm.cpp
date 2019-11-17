@@ -88,7 +88,7 @@ std::vector<Individual> GeneticAlgorithm::generate_reduced_population(Individual
         if (rng() < distill_inheritance_chance) {
             target.push_back(best.remove_rule());
         } else {
-            target.push_back(individual_from_samples(this, train.features, train.labels));
+            target.push_back(individual_from_samples(this, train));
         }
     }
     return target;
@@ -97,7 +97,7 @@ std::vector<Individual> GeneticAlgorithm::generate_reduced_population(Individual
 std::vector<Individual> GeneticAlgorithm::generate_covered_population() {
     std::vector<Individual> target;
     for (int i = 0; i < population_size; i++) {
-        target.push_back(individual_from_samples(this, train.features, train.labels));
+        target.push_back(individual_from_samples(this, train));
     }
     return target;
 }
@@ -121,7 +121,7 @@ Individual GeneticAlgorithm::create_offspring(std::vector<double> &population_fi
     Individual offspring = mum.crossover(dad).mutate();
 
     if (rng() < cover_chance) {
-        offspring = offspring.cover(train.features, train.labels);
+        offspring = offspring.cover(train);
     }
 
     return offspring;
@@ -145,7 +145,7 @@ void GeneticAlgorithm::display_test_results() {
     double total_fitness = 0;
 
     for (Individual &individual : population) {
-        double fitness = individual.fitness(test.features, test.labels);
+        double fitness = individual.fitness(test);
         population_fitness.push_back(fitness);
         total_fitness += fitness;
 
@@ -169,7 +169,7 @@ void GeneticAlgorithm::train_step() {
     double total_train_fitness = 0;
 
     for (Individual &individual : population) {
-        double fitness = individual.fitness(train.features, train.labels);
+        double fitness = individual.fitness(train);
         train_fitness.push_back(fitness);
         total_train_fitness += fitness;
 
@@ -202,7 +202,7 @@ void GeneticAlgorithm::train_step() {
     double total_cross_validation_fitness = 0;
     std::vector<double> cross_validation_fitness;
     for (Individual &individual : population) {
-        double fitness = individual.fitness(cross_validation.features, cross_validation.labels);
+        double fitness = individual.fitness(cross_validation);
         cross_validation_fitness.push_back(fitness);
         total_cross_validation_fitness += fitness;
     }
