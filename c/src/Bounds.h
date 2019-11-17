@@ -10,31 +10,25 @@ private:
     GeneticAlgorithm *ga;
     double lower;
     double upper;
-    bool general;
+    bool wildcard;
 public:
-    Bounds(GeneticAlgorithm *ga, double upper, double lower);
+    Bounds(GeneticAlgorithm *ga, double lower, double upper, bool wildcard);
 
-    explicit Bounds(GeneticAlgorithm *ga, double upper, double lower, bool general);
+    bool is_wildcard();
 
-    explicit Bounds(GeneticAlgorithm *ga);
-
-    bool is_generalisable();
-
-    Bounds *mutate();
+    Bounds mutate();
 
     bool contains(double feature);
 
-    Bounds *copy();
-
     std::string dump();
 
-    bool subsumes(Bounds *other);
+    bool subsumes(Bounds &other);
 };
 
-Bounds *random_bounds(GeneticAlgorithm *ga, double surrounding);
+Bounds random_bounds(GeneticAlgorithm *ga, double surrounding);
 
-Bounds *random_bounds(GeneticAlgorithm *ga);
+Bounds random_bounds(GeneticAlgorithm *ga);
 
-Bounds *load_bounds(GeneticAlgorithm *ga, std::string dump);
+Bounds load_bounds(GeneticAlgorithm *ga, std::string dump);
 
 #endif //C_BOUNDS_H

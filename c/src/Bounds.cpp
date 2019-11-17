@@ -1,5 +1,3 @@
-#include <cstdlib>
-#include <algorithm>
 #include <sstream>
 #include "Bounds.h"
 #include "GeneticAlgorithm.h"
@@ -8,93 +6,71 @@
 double UPPER_LIMIT = 1.25;
 double LOWER_LIMIT = -0.25;
 
-Bounds::Bounds(GeneticAlgorithm *ga, double upper, double lower, bool general) {
-    this->ga = ga;
-    this->upper = upper;
-    this->lower = lower;
-    this->general = general;
+Bounds::Bounds(GeneticAlgorithm *ga, double lower, double upper, bool wildcard) : ga(ga), lower(lower), upper(upper),
+                                                                                  wildcard(wildcard) {}
+
+bool Bounds::is_wildcard() {
+    return wildcard;
 }
 
-Bounds::Bounds(GeneticAlgorithm *ga, double upper, double lower) {
-    this->ga = ga;
-    this->upper = upper;
-    this->lower = lower;
-    this->general = false;
-}
-
-Bounds::Bounds(GeneticAlgorithm *ga) {
-    this->ga = ga;
-    this->upper = UPPER_LIMIT;
-    this->lower = LOWER_LIMIT;
-    this->general = true;
-}
-
-bool Bounds::is_generalisable() {
-    return general;
-}
-
-Bounds *Bounds::mutate() {
-    if (is_generalisable()) {
-        return rng() < ga->mutation_chance() ? random_bounds(ga) : copy();
+Bounds Bounds::mutate() {
+    if (is_wildcard()) {
+        return rng() < ga->mutation_chance() ? random_bounds(ga) : *this;
     }
 
     if (rng() < ga->mutation_chance()) {
-        return new Bounds(ga);
+        return Bounds(ga, LOWER_LIMIT, UPPER_LIMIT, true);
     }
 
     auto new_lower = rng() < ga->mutation_chance() ? ((upper * rng()) + LOWER_LIMIT) : lower;
     auto new_upper = rng() < ga->mutation_chance() ? ((UPPER_LIMIT * rng()) + new_lower) : upper;
-    return new Bounds(ga, new_upper, new_lower);
+    return Bounds(ga, new_lower, new_upper, false);
 }
 
 bool Bounds::contains(double feature) {
-    if (general) {
+    if (wildcard) {
         return true;
     }
     return lower < feature && feature < upper;
 }
 
-Bounds *Bounds::copy() {
-    return new Bounds(ga, upper, lower, general);
-}
-
 std::string Bounds::dump() {
-    if (general) {
+    if (wildcard) {
         return "#";
     }
     return std::to_string(lower) + "~" + std::to_string(upper);
 }
 
-bool Bounds::subsumes(Bounds *other) {
-    if (general) {
+bool Bounds::subsumes(Bounds &other) {
+    if (wildcard) {
         return true;
     }
-    if (other->general) {
+    if (other.wildcard) {
         return false;
     }
-    return lower <= other->lower && other->upper <= upper;
+    return lower <= other.lower && other.upper <= upper;
 }
 
-Bounds *random_bounds(GeneticAlgorithm *ga, double surrounding) {
+Bounds random_bounds(GeneticAlgorithm *ga, double surrounding) {
     double lower = uniform(LOWER_LIMIT, surrounding);
     double upper = uniform(surrounding, UPPER_LIMIT);
-    return new Bounds(ga, upper, lower);
+    return Bounds(ga, lower, upper, false);
 }
 
-Bounds *random_bounds(GeneticAlgorithm *ga) {
+Bounds random_bounds(GeneticAlgorithm *ga) {
     double lower = uniform(LOWER_LIMIT, UPPER_LIMIT);
     double upper = uniform(lower, UPPER_LIMIT);
-    return new Bounds(ga, upper, lower);
+    return Bounds(ga, lower, upper, false);
 }
 
-Bounds *load_bounds(GeneticAlgorithm *ga, std::string dump) {
+Bounds load_bounds(GeneticAlgorithm *ga, std::string dump) {
     if (dump == "#") {
-        return new Bounds(ga);
+        return Bounds(ga, LOWER_LIMIT, UPPER_LIMIT, true);
     }
 
     std::stringstream ss(dump);
     double upper, lower;
     char ignore;
     ss >> lower >> ignore >> upper;
-    return new Bounds(ga, upper, lower);
+    return Bounds(ga, lower, upper, false);
 }

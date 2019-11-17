@@ -10,35 +10,31 @@ class GeneticAlgorithm;
 class Rule {
 private:
     GeneticAlgorithm *ga;
-    std::vector<Bounds *> *condition;
+    std::vector<Bounds> condition;
     int action;
 public:
 
-    Rule(GeneticAlgorithm *ga, std::vector<Bounds *> *condition, int action);
-
-    ~Rule();
+    Rule(GeneticAlgorithm *ga, const std::vector<Bounds> &condition, int action);
 
     int get_action();
 
     double generalisation();
 
-    Rule *uniform_crossover(Rule *other);
+    Rule uniform_crossover(Rule &other);
 
-    Rule *mutate();
+    Rule mutate();
 
-    Rule *copy();
-
-    bool matches(std::vector<double> *features);
+    bool matches(std::vector<double> &features);
 
     std::string dump();
 
-    bool subsumes(Rule *other);
+    bool subsumes(Rule &other);
 };
 
-Rule *generate_rule(GeneticAlgorithm *ga);
+Rule generate_rule(GeneticAlgorithm *ga);
 
-Rule *load_rule(GeneticAlgorithm *ga, std::string dump);
+Rule load_rule(GeneticAlgorithm *ga, std::string dump);
 
-Rule *rule_from_sample(GeneticAlgorithm *ga, std::vector<double> *features, int label);
+Rule rule_from_sample(GeneticAlgorithm *ga, std::vector<double> &features, int label);
 
 #endif //C_RULE_H

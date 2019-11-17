@@ -3,15 +3,16 @@
 
 #include <vector>
 #include "Dataset.h"
+#include "Individual.h"
 
 class Individual;
 
 class GeneticAlgorithm {
 private:
     std::string dataset;
-    Dataset *train;
-    Dataset *cross_validation;
-    Dataset *test;
+    Dataset train = Dataset();
+    Dataset cross_validation = Dataset();
+    Dataset test = Dataset();
     int rule_count = 60;
     int population_size = 100;
     int generation_count = 1000;
@@ -19,9 +20,9 @@ private:
     double selection_switch_threshold = 0.1;
     int tournament_size = 5;
     double distill_inheritance_chance = 0.33;
-    std::vector<Individual *> *population = nullptr;
-    Individual *overall_best = nullptr;
-    double overall_best_fitness;
+    std::vector<Individual> population = std::vector<Individual>();
+    Individual overall_best = Individual(this);
+    double overall_best_fitness = -1;
     int generation = 0;
     bool checkpoint_fitness = false;
     double cover_chance = 0.1;
@@ -37,29 +38,23 @@ private:
 public:
     GeneticAlgorithm(std::string dataset, std::vector<double> splits);
 
-    ~GeneticAlgorithm();
-
     double mutation_chance();
 
     int get_condition_size();
 
     int get_rule_count();
 
-    void set_population(std::vector<Individual *> *new_population);
-
     void load_population(std::string filename);
 
-    void generate_population(Individual *best, bool smaller);
+    std::vector<Individual> generate_similar_population(Individual &best);
 
-    std::vector<Individual *> *generate_similar_population(Individual *best);
+    std::vector<Individual> generate_reduced_population(Individual &best);
 
-    std::vector<Individual *> *generate_reduced_population(Individual *best);
+    std::vector<Individual> generate_covered_population();
 
-    std::vector<Individual *> *generate_covered_population();
+    Individual tournament_selection(std::vector<double> &population_fitness);
 
-    Individual *tournament_selection(std::vector<double> *population_fitness);
-
-    Individual *create_offspring(std::vector<double> *population_fitness);
+    Individual create_offspring(std::vector<double> &population_fitness);
 
     void run();
 
@@ -67,9 +62,9 @@ public:
 
     void train_step();
 
-    bool found_new_best(Individual *best_individual, double best_fitness);
+    bool found_new_best(Individual &best_individual, double best_fitness);
 
-    void save_solution(Individual *best, double test_fitness, std::string filename);
+    void save_solution(Individual &best, double test_fitness, std::string filename);
 };
 
 #endif //C_GENETICALGORITHM_H

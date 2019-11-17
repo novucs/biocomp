@@ -5,12 +5,18 @@
 #include "Dataset.h"
 
 
+Dataset::Dataset() {
+    this->filename = "";
+    this->features = std::vector<std::vector<double>>();
+    this->labels = std::vector<int>();
+}
+
 Dataset::Dataset(std::string filename) {
     this->filename = filename;
     std::ifstream datafile(filename);
 
-    this->features = new std::vector<std::vector<double>>();
-    this->labels = new std::vector<int>();
+    this->features = std::vector<std::vector<double>>();
+    this->labels = std::vector<int>();
 
     for (std::string line; getline(datafile, line);) {
         std::stringstream ss(line);
@@ -25,7 +31,13 @@ Dataset::Dataset(std::string filename) {
     datafile.close();
 }
 
-void Dataset::load_binary_features(std::stringstream &ss) const {
+Dataset::Dataset(std::string filename, std::vector<std::vector<double>> features, std::vector<int> labels) {
+    this->filename = filename;
+    this->features = features;
+    this->labels = labels;
+}
+
+void Dataset::load_binary_features(std::stringstream &ss) {
     std::string sample_features_string;
     std::getline(ss, sample_features_string, ' ');
     std::vector<double> sample_features;
@@ -38,11 +50,11 @@ void Dataset::load_binary_features(std::stringstream &ss) const {
     int label;
     ss >> label;
 
-    features->push_back(sample_features);
-    labels->push_back(label);
+    features.push_back(sample_features);
+    labels.push_back(label);
 }
 
-void Dataset::load_floating_point_features(const std::string &line, std::stringstream &ss) const {
+void Dataset::load_floating_point_features(const std::string &line, std::stringstream &ss) {
     // count number of spaces in the line
     int spaces = 0;
     for (char c : line) {
@@ -64,36 +76,30 @@ void Dataset::load_floating_point_features(const std::string &line, std::strings
     ss >> label;
 
     // add to loaded dataset
-    features->push_back(sample_features);
-    labels->push_back(label);
+    features.push_back(sample_features);
+    labels.push_back(label);
 }
 
-Dataset::Dataset(std::string filename, std::vector<std::vector<double>> *features, std::vector<int> *labels) {
-    this->filename = filename;
-    this->features = features;
-    this->labels = labels;
-}
-
-std::vector<Dataset *> *Dataset::split(std::vector<double> ways) {
+std::vector<Dataset> Dataset::split(std::vector<double> ways) {
     std::vector<int> indices;
-    for (int i = 0; i < features->size(); i++) {
+    for (int i = 0; i < features.size(); i++) {
         indices.push_back(i);
     }
     std::random_shuffle(indices.begin(), indices.end());
 
-    auto *datasets = new std::vector<Dataset *>();
+    std::vector<Dataset> datasets;
     int index = 0;
 
     for (double percent : ways) {
-        int target = std::min((int) features->size(), (int) (index + (features->size() * percent)));
-        auto new_features = new std::vector<std::vector<double>>();
-        auto new_labels = new std::vector<int>();
+        int target = std::min((int) features.size(), (int) (index + (features.size() * percent)));
+        std::vector<std::vector<double>> new_features;
+        std::vector<int> new_labels;
         for (; index < target; index++) {
-            new_features->push_back(features->at(indices.at(index)));
-            new_labels->push_back(labels->at(indices.at(index)));
+            new_features.push_back(features.at(indices.at(index)));
+            new_labels.push_back(labels.at(indices.at(index)));
         }
-        auto *dataset = new Dataset(filename, new_features, new_labels);
-        datasets->push_back(dataset);
+        Dataset dataset(filename, new_features, new_labels);
+        datasets.push_back(dataset);
     }
 
     return datasets;
