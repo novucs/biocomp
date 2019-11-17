@@ -5,6 +5,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <atomic>
+#include <cmath>
 #include "Individual.h"
 #include "Random.h"
 
@@ -158,7 +159,7 @@ void GeneticAlgorithm::train_step() {
     if (overall_best_fitness < train_fitness.best) {
         overall_best = Individual(train_fitness.best_individual);
         overall_best_fitness = train_fitness.best;
-        if (fitness_threshold < overall_best_fitness) {
+        if (fitness_threshold <= overall_best_fitness) {
             found_new_best();
             return;
         }
@@ -191,26 +192,39 @@ void GeneticAlgorithm::train_step() {
 
 void GeneticAlgorithm::update_fitness() {
     std::atomic<int> updated(0);
+    std::vector<FitnessAggregate> aggregates;
+    std::vector<Dataset *> datasets = {&train, &cross_validation, &test};
+    int splits = std::ceil(std::thread::hardware_concurrency() / (double) datasets.size());
+    int expected_aggregates = datasets.size() * splits;
+    aggregates.resize(expected_aggregates);
 
-    executor->submit([this, &updated] {
-        train_fitness = fitness_aggregate_of(train, population);
-        updated += 1;
-    });
+    for (int i = 0; i < datasets.size() * splits; i++) {
+        executor->submit([this, &updated, &aggregates, &datasets, &splits, i] {
+            int dataset_id = i / splits;
+            int limit = (population.size() / (double) splits);
+            int offset = limit * (i % splits);
 
-    executor->submit([this, &updated] {
-        cross_validation_fitness = fitness_aggregate_of(cross_validation, population);
-        updated += 1;
-    });
+            // scoop up remaining individuals in final batch
+            if ((population.size() - offset - limit) < limit) {
+                limit = population.size() - offset;
+            }
 
-    executor->submit([this, &updated] {
-        test_fitness = fitness_aggregate_of(test, population);
-        updated += 1;
-    });
+            aggregates.at(i) = fitness_aggregate_of(*datasets.at(dataset_id), population, offset, limit);
+            updated += 1;
+        });
+    }
 
-    while (updated != 3) {
+    while (updated != expected_aggregates) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         continue;
     }
+
+    train_fitness = combine_fitness_aggregates(
+            std::vector<FitnessAggregate>(aggregates.begin() + (splits * 0), aggregates.begin() + (splits * 1)));
+    cross_validation_fitness = combine_fitness_aggregates(
+            std::vector<FitnessAggregate>(aggregates.begin() + (splits * 1), aggregates.begin() + (splits * 2)));
+    test_fitness = combine_fitness_aggregates(
+            std::vector<FitnessAggregate>(aggregates.begin() + (splits * 2), aggregates.begin() + (splits * 3)));
 }
 
 bool GeneticAlgorithm::found_new_best() {
@@ -229,7 +243,6 @@ void GeneticAlgorithm::save_solution(std::string filename) {
     struct tm *tstruct = localtime(&now);
     char current_time[80];
     strftime(current_time, sizeof(current_time), "%Y-%m-%d.%X", tstruct);
-    delete tstruct;
 
     std::ofstream file;
     file.open(filename, std::ios::app);

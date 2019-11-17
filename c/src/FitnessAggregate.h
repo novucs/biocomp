@@ -7,6 +7,7 @@
 class FitnessAggregate {
 public:
     std::vector<double> values = std::vector<double>();
+    std::vector<double> sorted_values = std::vector<double>();
     double total = 0;
     double mean = 0;
     double first_quartile = 0;
@@ -18,6 +19,7 @@ public:
     FitnessAggregate();
 
     FitnessAggregate(std::vector<double> &values,
+                     std::vector<double> &sorted_values,
                      double total,
                      double mean,
                      double first_quartile,
@@ -27,6 +29,8 @@ public:
                      Individual &best_individual);
 };
 
-FitnessAggregate fitness_aggregate_of(Dataset dataset, std::vector<Individual> population);
+FitnessAggregate combine_fitness_aggregates(std::vector<FitnessAggregate> aggregates);
+
+FitnessAggregate fitness_aggregate_of(Dataset &dataset, std::vector<Individual> &population, int offset, int limit);
 
 #endif //C_FITNESSAGGREGATE_H
