@@ -5,8 +5,6 @@
 #include "Dataset.h"
 #include "Individual.h"
 
-class Individual;
-
 class GeneticAlgorithm {
 private:
     std::string dataset;
