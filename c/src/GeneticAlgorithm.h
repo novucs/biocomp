@@ -21,6 +21,7 @@ private:
     double crossover_chance = 0.5;
     double mutation_chance = 0.003;
     double selection_switch_threshold = 0.1;
+    int covered_best_variations = 5;
     int tournament_size = 5;
     double distill_inheritance_chance = 0.33;
     std::vector<Individual> population = std::vector<Individual>();

@@ -37,6 +37,7 @@ GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> spli
     file << "\tcrossover_chance:" << crossover_chance << std::endl;
     file << "\tmutation_rate:" << mutation_chance << std::endl;
     file << "\tselection_switch_threshold:" << selection_switch_threshold << std::endl;
+    file << "\tcovered_best_variations:" << covered_best_variations << std::endl;
     file << "\ttournament_size:" << tournament_size << std::endl;
     file << "\tdistill_inheritance_chance:" << distill_inheritance_chance << std::endl;
     file << "\tcover_chance:" << cover_chance << std::endl;
@@ -204,7 +205,7 @@ void GeneticAlgorithm::train_step() {
     double mean_fitness_difference = std::max(0.0, train_fitness.mean - cross_validation_fitness.mean);
 
     std::vector<Individual> new_population;
-    for (int i = 0; i < (population_size - 1); i++) {
+    for (int i = 0; i < (population_size - covered_best_variations - 1); i++) {
         // todo: see if rule count could be used here
         // weigh selection fitness by that of the cross-validation set when over fitting
         if ((rng() * mean_fitness_difference) > selection_switch_threshold) {
@@ -215,6 +216,10 @@ void GeneticAlgorithm::train_step() {
     }
 
     new_population.push_back(Individual(overall_best));
+    for (int i = 0; i < covered_best_variations; i++) {
+        new_population.push_back(overall_best.cover(train).mutate());
+    }
+
     population = new_population;
 }
 

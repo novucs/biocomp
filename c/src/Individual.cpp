@@ -151,7 +151,8 @@ Individual Individual::cover(Dataset &dataset) {
     int missing_rules = ga->get_rule_count() - individual.rule_count();
     int wrong_covering_count = std::min((int) wrong_classifications.size(), missing_rules);
     for (int i = 0; i < wrong_covering_count; i++) {
-        int index = wrong_classifications.at(i);
+        int wrong_classification_id = rng() * wrong_classifications.size();
+        int index = wrong_classifications.at(wrong_classification_id);
         Rule rule = rule_from_sample(ga, dataset.features.at(index), dataset.labels.at(index));
         individual.rules.insert(individual.rules.begin(), rule);
     }
