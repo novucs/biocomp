@@ -18,15 +18,15 @@ bool Bounds::is_wildcard() {
 
 Bounds Bounds::mutate() {
     if (is_wildcard()) {
-        return rng() < ga->mutation_chance() ? random_bounds(ga) : *this;
+        return rng() < ga->get_mutation_chance() ? random_bounds(ga) : *this;
     }
 
-    if (rng() < ga->mutation_chance()) {
+    if (rng() < ga->get_mutation_chance()) {
         return Bounds(ga, LOWER_LIMIT, UPPER_LIMIT, true);
     }
 
-    auto new_lower = rng() < ga->mutation_chance() ? ((upper * rng()) + LOWER_LIMIT) : lower;
-    auto new_upper = rng() < ga->mutation_chance() ? ((UPPER_LIMIT * rng()) + new_lower) : upper;
+    auto new_lower = rng() < ga->get_mutation_chance() ? ((upper * rng()) + LOWER_LIMIT) : lower;
+    auto new_upper = rng() < ga->get_mutation_chance() ? ((UPPER_LIMIT * rng()) + new_lower) : upper;
     return Bounds(ga, new_lower, new_upper, false);
 }
 

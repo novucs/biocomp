@@ -35,7 +35,7 @@ GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> spli
     file << "\trule_count:" << rule_count << std::endl;
     file << "\tpopulation_size:" << population_size << std::endl;
     file << "\tcrossover_chance:" << crossover_chance << std::endl;
-    file << "\tmutation_rate:" << mutation_chance() << std::endl;
+    file << "\tmutation_rate:" << mutation_chance << std::endl;
     file << "\tselection_switch_threshold:" << selection_switch_threshold << std::endl;
     file << "\ttournament_size:" << tournament_size << std::endl;
     file << "\tdistill_inheritance_chance:" << distill_inheritance_chance << std::endl;
@@ -45,8 +45,8 @@ GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> spli
     file.close();
 }
 
-double GeneticAlgorithm::mutation_chance() {
-    return 0.00125;
+double GeneticAlgorithm::get_mutation_chance() {
+    return mutation_chance;
 }
 
 int GeneticAlgorithm::get_condition_size() {

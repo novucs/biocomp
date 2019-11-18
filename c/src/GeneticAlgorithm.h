@@ -19,6 +19,7 @@ private:
     int rule_count = 60;
     int population_size = 100;
     double crossover_chance = 0.5;
+    double mutation_chance = 0.003;
     double selection_switch_threshold = 0.1;
     int tournament_size = 5;
     double distill_inheritance_chance = 0.33;
@@ -44,7 +45,7 @@ private:
 public:
     GeneticAlgorithm(std::string dataset, std::vector<double> splits);
 
-    double mutation_chance();
+    double get_mutation_chance();
 
     int get_condition_size();
 
