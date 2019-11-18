@@ -3,7 +3,7 @@
 #include "GeneticAlgorithm.h"
 
 int main(int argc, char *argv[]) {
-    if (argc <= 2 && argc != 4) {
+    if (argc <= 2 || argc == 4) {
         std::cout << "Expected usage:" << std::endl;
         std::cout << "\t./rulebasedga {dataset} {train%} [cross_validation%] [test%]" << std::endl;
         std::cout << "\te.g.: ./rulebasedga ../../datasets/2019/data1.txt 1.0" << std::endl;
@@ -21,7 +21,8 @@ int main(int argc, char *argv[]) {
         test = std::stod(argv[4]);
     }
 
-    GeneticAlgorithm ga(dataset, {train, cross_validation, test});
+    GeneticAlgorithm ga =
+            argc == 5 ? GeneticAlgorithm(dataset, {train, cross_validation, test}) : GeneticAlgorithm(dataset, {train});
     std::thread ga_thread(&GeneticAlgorithm::run, &ga);
 
     std::string throwaway;
