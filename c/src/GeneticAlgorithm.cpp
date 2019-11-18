@@ -283,7 +283,7 @@ void GeneticAlgorithm::save_solution() {
 void GeneticAlgorithm::log() {
     std::ofstream file;
     file.open(log_filename, std::ios::app);
-    file << "rule_count:" << overall_best.rule_count() << " ";
+    file << "rule_count:" << rule_count << " ";
     file << "generation:" << generation << " ";
     file << "time:" << current_time() << " ";
 
