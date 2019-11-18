@@ -6,19 +6,43 @@
 #include <unordered_map>
 #include <atomic>
 #include <cmath>
+#include <stdlib.h>
+#include <stdio.h>
 #include "Individual.h"
 #include "Random.h"
 
-GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> splits) : dataset_name(dataset) {
+GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> splits) : dataset_filename(dataset) {
     auto datasets = Dataset(dataset).split(splits);
     train = datasets.at(0);
     test = datasets.size() < 2 ? train : datasets.at(datasets.size() - 1);
     cross_validation = datasets.size() < 3 ? test : datasets.at(1);
     executor = new ThreadPool();
-}
 
-GeneticAlgorithm::~GeneticAlgorithm() {
-    delete executor;
+    int slash_position = dataset.rfind('/') + 1;
+    int until_dot = dataset.rfind('.') - slash_position;
+    dataset_name = dataset.substr(slash_position, until_dot);
+    start_time = current_time();
+    log_filename = "../logs/" + dataset_name + "/" + start_time + ".log";
+
+    std::string create_log_directory_command = "mkdir -p ../logs/" + dataset_name;
+    system(create_log_directory_command.c_str());
+
+    std::ofstream file;
+    file.open(log_filename, std::ios::app);
+    file << "================================" << std::endl;
+    file << "Run settings:" << std::endl;
+    file << "\tdataset:" << dataset_filename << std::endl;
+    file << "\trule_count:" << rule_count << std::endl;
+    file << "\tpopulation_size:" << population_size << std::endl;
+    file << "\tcrossover_chance:" << crossover_chance << std::endl;
+    file << "\tmutation_rate:" << mutation_chance() << std::endl;
+    file << "\tselection_switch_threshold:" << selection_switch_threshold << std::endl;
+    file << "\ttournament_size:" << tournament_size << std::endl;
+    file << "\tdistill_inheritance_chance:" << distill_inheritance_chance << std::endl;
+    file << "\tcover_chance:" << cover_chance << std::endl;
+    file << "\tfitness_threshold:" << fitness_threshold << std::endl;
+    file << "================================" << std::endl;
+    file.close();
 }
 
 double GeneticAlgorithm::mutation_chance() {
@@ -137,11 +161,15 @@ void GeneticAlgorithm::run() {
     load_population("../solutions.txt");
     generation = 0;
     while (running) {
-        generation += 1;
-        train_step();
-        if (generation % 50 == 0) {
-            display_test_results();
+        {
+            std::unique_lock<std::mutex> lock(mutex);
+            generation += 1;
+            train_step();
+            if (generation % 50 == 0) {
+                display_test_results();
+            }
         }
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
     }
 }
 
@@ -225,32 +253,79 @@ void GeneticAlgorithm::update_fitness() {
             std::vector<FitnessAggregate>(aggregates.begin() + (splits * 1), aggregates.begin() + (splits * 2)));
     test_fitness = combine_fitness_aggregates(
             std::vector<FitnessAggregate>(aggregates.begin() + (splits * 2), aggregates.begin() + (splits * 3)));
+
+    log();
 }
 
 bool GeneticAlgorithm::found_new_best() {
     overall_best = overall_best.compress();
     rule_count = overall_best.rule_count();
     printf("Found rule in %d generations with rule count of %d\n", generation, rule_count);
-    save_solution("../solutions.txt");
+    save_solution();
     overall_best_fitness = -1;
     rule_count -= 1;
     population = generate_reduced_population(overall_best);
     return true;
 }
 
-void GeneticAlgorithm::save_solution(std::string filename) {
+void GeneticAlgorithm::save_solution() {
+    std::ofstream file;
+    file.open("../solutions.txt", std::ios::app);
+    file << "dataset:" << dataset_filename << " ";
+    file << "rule_count:" << overall_best.rule_count() << " ";
+    file << "generation:" << generation << " ";
+    file << "fitness:" << test_fitness.best << " ";
+    file << "time:" << current_time() << " ";
+    file << "rules:" << overall_best.dump() << std::endl;
+    file.close();
+}
+
+void GeneticAlgorithm::log() {
+    std::ofstream file;
+    file.open(log_filename, std::ios::app);
+    file << "rule_count:" << overall_best.rule_count() << " ";
+    file << "generation:" << generation << " ";
+    file << "time:" << current_time() << " ";
+
+    file << "train_fitness_best:" << train_fitness.best << " ";
+    file << "train_fitness_mean:" << train_fitness.mean << " ";
+    file << "train_fitness_first_quartile:" << train_fitness.first_quartile << " ";
+    file << "train_fitness_median:" << train_fitness.median << " ";
+    file << "train_fitness_third_quartile:" << train_fitness.third_quartile << " ";
+
+    file << "cross_validation_fitness_best:" << cross_validation_fitness.best << " ";
+    file << "cross_validation_fitness_mean:" << cross_validation_fitness.mean << " ";
+    file << "cross_validation_fitness_first_quartile:" << cross_validation_fitness.first_quartile << " ";
+    file << "cross_validation_fitness_median:" << cross_validation_fitness.median << " ";
+    file << "cross_validation_fitness_third_quartile:" << cross_validation_fitness.third_quartile << " ";
+
+    file << "test_fitness_best:" << test_fitness.best << " ";
+    file << "test_fitness_mean:" << test_fitness.mean << " ";
+    file << "test_fitness_first_quartile:" << test_fitness.first_quartile << " ";
+    file << "test_fitness_median:" << test_fitness.median << " ";
+    file << "test_fitness_third_quartile:" << test_fitness.third_quartile << " ";
+
+    file << "best_train_rules:" << overall_best.dump() << " ";
+    file << "best_cross_validation_rules:" << cross_validation_fitness.best_individual.dump() << " ";
+    file << "best_test_rules:" << test_fitness.best_individual.dump() << std::endl;
+    file.close();
+}
+
+std::string GeneticAlgorithm::current_time() {
     time_t now = time(0);
     struct tm *tstruct = localtime(&now);
     char current_time[80];
     strftime(current_time, sizeof(current_time), "%Y-%m-%d.%X", tstruct);
+    return std::string(current_time);
+}
 
-    std::ofstream file;
-    file.open(filename, std::ios::app);
-    file << "dataset:" << dataset_name << " ";
-    file << "rule_count:" << overall_best.rule_count() << " ";
-    file << "generation:" << generation << " ";
-    file << "fitness:" << test_fitness.best << " ";
-    file << "time:" << current_time << " ";
-    file << "rules:" << overall_best.dump() << std::endl;
-    file.close();
+void GeneticAlgorithm::terminate() {
+    std::unique_lock<std::mutex> lock(mutex);
+    running = false;
+    std::string create_solutions_directory_cmd = "mkdir -p ../solutions/" + dataset_name;
+    system(create_solutions_directory_cmd.c_str());
+    std::string solutions_file = "../solutions/" + dataset_name + "/" + start_time + ".log";
+    std::string copy_solutions_cmd = "cp ../solutions.txt " + solutions_file;
+    system(copy_solutions_cmd.c_str());
+    std::cout << "Saved solutions in " << solutions_file << std::endl;
 }

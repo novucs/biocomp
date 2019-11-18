@@ -10,13 +10,14 @@
 class GeneticAlgorithm {
 private:
     std::string dataset_name;
+    std::string dataset_filename;
+    std::string log_filename;
+    std::string start_time;
     Dataset train = Dataset();
     Dataset cross_validation = Dataset();
     Dataset test = Dataset();
-    ThreadPool *executor;
     int rule_count = 60;
     int population_size = 100;
-    int generation_count = 1000;
     double crossover_chance = 0.5;
     double selection_switch_threshold = 0.1;
     int tournament_size = 5;
@@ -28,10 +29,11 @@ private:
     FitnessAggregate test_fitness = FitnessAggregate();
     double overall_best_fitness = -1;
     int generation = 0;
-    bool checkpoint_fitness = false;
     double cover_chance = 0.1;
-    double fitness_threshold = 60 / (double) 60;
-    bool verbose = false;
+    double fitness_threshold = 59 / (double) 60;
+
+    ThreadPool *executor;
+    std::mutex mutex;
     bool running = true;
 
     // simulated annealing - increasing/decreasing rule count
@@ -41,8 +43,6 @@ private:
 
 public:
     GeneticAlgorithm(std::string dataset, std::vector<double> splits);
-
-    virtual ~GeneticAlgorithm();
 
     double mutation_chance();
 
@@ -70,9 +70,15 @@ public:
 
     bool found_new_best();
 
-    void save_solution(std::string filename);
+    void save_solution();
 
     void update_fitness();
+
+    std::string current_time();
+
+    void log();
+
+    void terminate();
 };
 
 #endif //C_GENETICALGORITHM_H
