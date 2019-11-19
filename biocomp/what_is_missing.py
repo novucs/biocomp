@@ -54,6 +54,9 @@ def prove_digital_multiplexer(features, labels):
             print('\tAttributes:', attributes_repr, 'can be true and false')
             is_digital = False
 
+        # if classes:
+        #     print(attributes_repr, int(classes[0]))
+
     if is_digital:
         print('\tThis dataset is a digital multiplexer')
         print(f'\tThere are {missing}/{2 ** attribute_count} missing inputs')

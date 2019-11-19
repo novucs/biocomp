@@ -3,8 +3,9 @@
 #include "GeneticAlgorithm.h"
 #include "Random.h"
 
-double UPPER_LIMIT = 1.25;
-double LOWER_LIMIT = -0.25;
+double SURROUND_SIZE = 0.25;
+double UPPER_LIMIT = 1 + SURROUND_SIZE;
+double LOWER_LIMIT = 0 - SURROUND_SIZE;
 
 Bounds::Bounds(GeneticAlgorithm *ga, double lower, double upper, bool wildcard) : ga(ga), lower(lower), upper(upper),
                                                                                   wildcard(wildcard) {}
@@ -55,8 +56,8 @@ bool Bounds::subsumes(Bounds &other) {
 }
 
 Bounds random_bounds(GeneticAlgorithm *ga, double surrounding) {
-    double lower = uniform(LOWER_LIMIT, surrounding);
-    double upper = uniform(surrounding, UPPER_LIMIT);
+    double lower = uniform(surrounding - 0.25, surrounding);
+    double upper = uniform(surrounding, surrounding + 0.25);
     return Bounds(ga, lower, upper, false);
 }
 

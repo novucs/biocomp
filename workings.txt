@@ -9,12 +9,12 @@ data1:
     ##      ####  0
     ^          ^  ^
     |__________|  |
-    rule          label
+    rule          action
 
-    00 = 1st bit
-    01 = 2nd bit
-    10 = 3rd bit
-    11 = 4th bit
+    00 = 4th bit
+    01 = 3rd bit
+    10 = 2nd bit
+    11 = 1st bit
 
     (negative example with bounds)
     c/logs/data1/2019-11-19.19:12:08.log
@@ -147,5 +147,61 @@ data2:
 
     Of course this solution still does not account for a portion of the dataset,
     specifically 1 value: `000011 1`. This may just be due to it being bad data.
+
+===============================
+
+===============================
+
+data3:
+    from solutions_6
+    dataset:datasets/2019/data3.txt rule_count:6 generation:503 fitness:1.0 time:2019-11-04_18:44:09.072323 rules:0,1,#,0,#,#,0,1,0,#,#,1,#,1,#,1,#,#,#,1,1,0,1,#,#,#,#,1,0,#,1,#,#,#,1,#,#,#,#,#,#,0
+
+    01#0## 0
+    10##1# 1
+    #1###1 1  < 01###1 + 11###1 = 1
+    01#### 1  < 01###1
+    0#1### 1
+    ###### 0
+
+    01#0## 0
+    10##1# 1
+    11###1 1
+    01#### 1  < covers   01####
+    0#1### 1  < might be 001### 1  ???
+    ###### 0
+
+    01 #0## 0  < remove this
+    10 ##1# 1
+    11 ###1 1
+    01 #### 1  < replace # with 1 in position 2
+    00 1### 1
+    ## #### 0
+
+    00 1### 1
+    01 #1## 1
+    10 ##1# 1
+    11 ###1 1
+    ## #### 0
+
+    00 = 1st bit
+    01 = 2nd bit
+    10 = 3rd bit
+    11 = 4th bit
+
+    c/logs/data3/2019-11-19.20:45:13.log
+    rule_count:5 generation:71046 time:2019-11-19.21:21:43 train_fitness_best:0.982 train_fitness_mean:0.632947 train_fitness_first_quartile:0.553667 train_fitness_median:0.698667 train_fitness_third_quartile:0.808667 cross_validation_fitness_best:0.948667 cross_validation_fitness_mean:0.617097 cross_validation_fitness_first_quartile:0.555 cross_validation_fitness_median:0.673667 cross_validation_fitness_third_quartile:0.773667 test_fitness_best:0.939 test_fitness_mean:0.607572 test_fitness_first_quartile:0.545 test_fitness_median:0.65525 test_fitness_third_quartile:0.76525 best_train_rules:-0.010833~0.500701,-0.085301~0.526811,-0.245367~0.502400,#,#,#,0|0.491358~1.041304,0.492993~0.989952,#,#,-0.184474~1.089337,0.504995~1.090061,1|#,-0.214592~0.502411,#,-0.026244~0.987326,0.500973~1.060664,#,1|-0.127040~0.495538,#,#,0.497231~1.076245,#,#,1|#,#,#,#,#,#,0 best_cross_validation_rules:-0.010833~0.500701,-0.085301~0.526811,-0.245367~0.502400,#,#,#,0|0.491358~1.041304,0.492993~0.989952,#,#,-0.184474~1.089337,0.504995~1.090061,1|#,-0.214592~0.502411,#,-0.026244~0.987326,0.500973~1.060664,#,1|-0.127040~0.495538,#,#,0.497231~1.076245,#,#,1|#,#,#,#,#,#,0 best_test_rules:-0.010833~0.500701,-0.085301~0.526811,-0.245367~0.502400,#,#,#,0|0.491358~1.041304,0.492993~0.989952,#,#,-0.184474~1.089337,0.504995~1.090061,1|#,-0.214592~0.502411,#,-0.026244~0.987326,0.500973~1.060664,#,1|-0.127040~0.495538,#,#,0.497231~1.076245,#,#,1|#,#,#,#,#,#,0
+
+===============================
+
+data4:
+    something like this i guess? :)
+    000 #######
+    001 #######
+    010 #######
+    011 #######
+    100 #######
+    101 #######
+    110 #######
+    111 #######
 
 ===============================

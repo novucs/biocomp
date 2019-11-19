@@ -11,6 +11,8 @@ private:
     GeneticAlgorithm *ga;
     std::vector<Rule> rules = std::vector<Rule>();
 public:
+    Individual();
+
     Individual(GeneticAlgorithm *ga);
 
     Individual(GeneticAlgorithm *ga, const std::vector<Rule> &rules);
@@ -45,7 +47,7 @@ public:
 
     Individual cover(Dataset &dataset);
 
-    Individual();
+    std::vector<int> wrong_classifications(Dataset &dataset);
 };
 
 Individual dummy_individual();
