@@ -33,7 +33,7 @@ private:
     double overall_best_fitness = -1;
     int generation = 0;
     double cover_chance = 0.1;
-    double fitness_threshold = 59 / (double) 60;
+    double fitness_threshold = 60 / (double) 60;
 
     ThreadPool *executor;
     std::mutex mutex;
