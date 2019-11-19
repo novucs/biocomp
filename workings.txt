@@ -1,15 +1,15 @@
 ===============================
 
 data1:
-    binary  ones  correct?
-    00      ###1  1
-    01      ##1#  1
-    10      #1##  1
-    11      1###  1
-    ##      ####  0
-    ^          ^  ^
-    |__________|  |
-    rule          action
+    binary | ones    | correct?
+    00     | # # # 1 | 1
+    01     | # # 1 # | 1
+    10     | # 1 # # | 1
+    11     | 1 # # # | 1
+    ##     | # # # # | 0
+    ^          ^       ^
+    |__________|       |
+    rule               action
 
     00 = 4th bit
     01 = 3rd bit
@@ -188,6 +188,17 @@ data3:
     10 = 3rd bit
     11 = 4th bit
 
+    aka:
+    binary | 0 1 2 3 | correct?
+    00     | 1 # # # | 1
+    01     | # 1 # # | 1
+    10     | # # 1 # | 1
+    11     | # # # 1 | 1
+    ##     | # # # # | 0
+    ^                   ^ ^
+    |___________________| |
+    rule                  action
+
     c/logs/data3/2019-11-19.20:45:13.log
     rule_count:5 generation:71046 time:2019-11-19.21:21:43 train_fitness_best:0.982 train_fitness_mean:0.632947 train_fitness_first_quartile:0.553667 train_fitness_median:0.698667 train_fitness_third_quartile:0.808667 cross_validation_fitness_best:0.948667 cross_validation_fitness_mean:0.617097 cross_validation_fitness_first_quartile:0.555 cross_validation_fitness_median:0.673667 cross_validation_fitness_third_quartile:0.773667 test_fitness_best:0.939 test_fitness_mean:0.607572 test_fitness_first_quartile:0.545 test_fitness_median:0.65525 test_fitness_third_quartile:0.76525 best_train_rules:-0.010833~0.500701,-0.085301~0.526811,-0.245367~0.502400,#,#,#,0|0.491358~1.041304,0.492993~0.989952,#,#,-0.184474~1.089337,0.504995~1.090061,1|#,-0.214592~0.502411,#,-0.026244~0.987326,0.500973~1.060664,#,1|-0.127040~0.495538,#,#,0.497231~1.076245,#,#,1|#,#,#,#,#,#,0 best_cross_validation_rules:-0.010833~0.500701,-0.085301~0.526811,-0.245367~0.502400,#,#,#,0|0.491358~1.041304,0.492993~0.989952,#,#,-0.184474~1.089337,0.504995~1.090061,1|#,-0.214592~0.502411,#,-0.026244~0.987326,0.500973~1.060664,#,1|-0.127040~0.495538,#,#,0.497231~1.076245,#,#,1|#,#,#,#,#,#,0 best_test_rules:-0.010833~0.500701,-0.085301~0.526811,-0.245367~0.502400,#,#,#,0|0.491358~1.041304,0.492993~0.989952,#,#,-0.184474~1.089337,0.504995~1.090061,1|#,-0.214592~0.502411,#,-0.026244~0.987326,0.500973~1.060664,#,1|-0.127040~0.495538,#,#,0.497231~1.076245,#,#,1|#,#,#,#,#,#,0
 
@@ -295,9 +306,35 @@ data4:
     ##1####1#1 1
     ########## 0
 
-    00: 1   0
-    01: 4   3
-    10: 3   2
-    11: 5   4
+    un-doing questions larry (possibly) thought:
+
+        here's what we've got:
+
+        a b c d e f g h i j
+        # # 0 1 # # # # # 0     1
+        # # 1 # # 1 # # # 0     1
+        # # 0 # # # 1 # # 1     1
+        # # 1 # # # # 1 # 1     1
+        # # # # # # # # # #     0
+
+        how about i add a few dummy columns to throw people off?
+        (remove columns a, b, e, i)
+
+        c d f g h j
+        0 1 # # # 0     1
+        1 # 1 # # 0     1
+        0 # # 1 # 1     1
+        1 # # # 1 1     1
+        # # # # # #     0
+
+        how about i reorder the output columns to throw more people off?
+        (move j to the front)
+
+        j c d f g h
+        0 0 1 # # #     1
+        0 1 # 1 # #     1
+        1 0 # # 1 #     1
+        1 1 # # # 1     1
+        # # # # # #     0
 
 ===============================
