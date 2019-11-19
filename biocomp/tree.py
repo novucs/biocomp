@@ -54,6 +54,18 @@ class ConstantLeafNode(LeafNode):
         return str(self.constant)
 
 
+class ZeroLeafNode(LeafNode):
+    def __init__(self):
+        super(ZeroLeafNode, self).__init__()
+        self.constant = 0
+
+    def evaluate(self, features):
+        return self.constant
+
+    def __str__(self):
+        return str(self.constant)
+
+
 class SubtreeNode(Node):
     def __init__(self, children=None):
         super(SubtreeNode, self).__init__()
@@ -89,6 +101,9 @@ class DivisionSubtreeNode(SubtreeNode):
 
 
 class MultiplicationSubtreeNode(SubtreeNode):
+    def __init__(self, children=None):
+        super().__init__(children)
+
     def evaluate(self, features):
         return self.children[0].evaluate(features) * self.children[1].evaluate(features)
 
@@ -97,10 +112,11 @@ class MultiplicationSubtreeNode(SubtreeNode):
 
 
 class RootNode(SubtreeNode):
-    def __init__(self, threshold, child):
+    def __init__(self, threshold, child, settings):
         super(RootNode, self).__init__()
         self.threshold: float = threshold
         self.children: List[Node] = [child]
+        self.settings = settings
 
     def evaluate(self, features):
         return self.children[0].evaluate(features) < self.threshold
@@ -123,48 +139,48 @@ def create_gene_inner(settings, depth=0) -> Node:
         s = next(iter(node_create_settings.values()))
         for s, w in zip(node_create_settings.values(), wheel):
             cumulative += w
-            if w >= index:
+            if cumulative >= index:
                 break
         return s()
 
     # Leaf creation
-
     def create_leaf_feature():
-        return FeatureLeafNode(random.randint(0, settings['feature_count'] - 1))
+        feature = None
+        while min(settings['running_feature_repeats']) < settings['max_feature_repeats']:
+            feature = random.randint(0, settings['feature_count'] - 1)
+            if settings['running_feature_repeats'][feature] < settings['max_feature_repeats']:
+                break
+
+        if feature is None:
+            return None
+
+        return FeatureLeafNode(feature)
 
     def create_leaf_constant():
-        return ConstantLeafNode(random.uniform(
-            settings['constant_min'], settings['constant_max']))
+        if settings['running_constant_repeats'] >= settings['max_constant_repeats']:
+            return None
+
+        value = random.uniform(settings['constant_min'], settings['constant_max'])
+        return ConstantLeafNode(int(value) if settings['constant_int'] else value)
 
     def create_leaf():
-        return create_node({
+        leaf = create_node({
             'odds_leaf_feature': create_leaf_feature,
             'odds_leaf_constant': create_leaf_constant,
         })
 
-    # Subtree creation
+        return leaf if leaf is not None else ZeroLeafNode()
 
+    # Subtree creation
     def create_children(count=2):
         return [create_gene_inner(settings, depth) for _ in range(count)]
 
-    def create_subtree_addition():
-        return AdditionSubtreeNode(create_children())
-
-    def create_subtree_modulo():
-        return ModuloSubtreeNode(create_children())
-
-    def create_subtree_divide():
-        return DivisionSubtreeNode(create_children())
-
-    def create_subtree_multiply():
-        return MultiplicationSubtreeNode(create_children())
-
     def create_subtree():
         return create_node({
-            'odds_subtree_+': create_subtree_addition,
-            'odds_subtree_%': create_subtree_modulo,
-            # 'odds_subtree_/': create_subtree_divide,
-            # 'odds_subtree_*': create_subtree_multiply,
+            'odds_subtree_+': lambda: AdditionSubtreeNode(create_children()),
+            'odds_subtree_%': lambda:  ModuloSubtreeNode(create_children()),
+            'odds_subtree_/': lambda: DivisionSubtreeNode(create_children()),
+            'odds_subtree_*': lambda: MultiplicationSubtreeNode(create_children()),
         })
 
     return create_leaf() if depth >= settings['max_depth'] else create_node({
@@ -178,9 +194,10 @@ def create_gene_threshold(settings):
 
 
 def create_gene(settings) -> RootNode:
-    threshold = create_gene_threshold(settings.copy())
-    child = create_gene_inner(settings.copy())
-    return RootNode(threshold, child)
+    settings = settings.copy()
+    threshold = create_gene_threshold(settings)
+    child = create_gene_inner(settings)
+    return RootNode(threshold, child, settings)
 
 
 def iterate_gene(gene, parent=None, path=None) -> \
@@ -221,13 +238,22 @@ def crossover(mother: RootNode, father: RootNode, settings) -> \
     return offspring_1, offspring_2
 
 
-def mutate(gene: RootNode, mutation_chance, settings):
+def mutate(gene: RootNode, mutation_chance):
     gene = copy.deepcopy(gene)
+    settings = gene.settings
+
     for child, parent, path in iterate_gene(gene):
         if random.uniform(0, 1) < mutation_chance:
-            parent.children[path[-1]] = create_gene_inner(settings.copy(), len(path))
+            # update tree settings
+            for grandchild, *_ in iterate_gene(parent.children[path[-1]]):
+                if isinstance(grandchild, FeatureLeafNode):
+                    settings['running_feature_repeats'][grandchild.feature] -= 1
+                elif isinstance(grandchild, ConstantLeafNode):
+                    settings['running_constant_repeats'] -= 1
+            # replace child
+            parent.children[path[-1]] = create_gene_inner(settings, len(path))
     if random.uniform(0, 1) < mutation_chance:
-        gene.threshold = create_gene_threshold(settings.copy())
+        gene.threshold = create_gene_threshold(settings)
     return gene
 
 
@@ -243,16 +269,16 @@ def tournament_selection(population, fitnesses, tournament_size):
 def main():
     features, labels, *_ = datasets.split(datasets.load_dataset_2())
     population_size = 50
-    generation_count = 10000
-    crossover_chance = 0.85
-    mutation_chance = 0.0125
+    crossover_chance = 0.0
+    mutation_chance = 0.05
     tournament_size = 5
     tree_settings = {
-        'max_depth': 8,
+        'max_depth': 7,
         'threshold_max': 1.0,
         'threshold_min': -1.0,
-        'constant_max': 1.0,
-        'constant_min': -1.0,
+        'constant_max': 5.0,
+        'constant_min': -5.0,
+        'constant_int': True,
         'odds_subtree': 2.0,
         'odds_leaf': 1.0,
         'odds_leaf_feature': 1.0,
@@ -263,15 +289,21 @@ def main():
         'odds_subtree_/': 0.0,
         'odds_subtree_*': 0.0,
         'feature_count': len(features[0]),
+        'max_feature_repeats': 1,
+        'max_constant_repeats': 1,
+
+        # running parameters
+        'running_feature_repeats': [0] * len(features[0]),
+        'running_constant_repeats': 0,
     }
 
     population = [create_gene(tree_settings) for _ in range(population_size)]
     overall_best, overall_best_fitness = None, -float('inf')
 
-    # for generation in range(generation_count):
     generation = 0
     while True:
         generation += 1
+
         # evaluation
         fitnesses = [gene.fitness(features, labels) for gene in population]
         best_fitness = max(fitnesses)
@@ -309,7 +341,7 @@ def main():
 
         # mutation
         population = [
-            mutate(gene, mutation_chance, tree_settings)
+            mutate(gene, mutation_chance)
             for gene in population
         ]
 

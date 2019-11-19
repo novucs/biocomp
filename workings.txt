@@ -82,7 +82,8 @@ data2:
     Using an LSTM enabled the network to fit quickly.
     A simple recurrent neural network also achieved the same result.
 
-    This told me there is merit to representing the dataset as a sequence.
+    This told me there is merit to representing features in the dataset as a
+    sequence.
 
     Simply using a neural network with many parameters is not going to make the
     underlying structure of the data any more clear.
@@ -90,6 +91,10 @@ data2:
     I implemented a genetic programming model to learn an equation that best
     fit the dataset. It achieved a solution with 98.34% accuracy within 6272
     generations.
+
+    Note: In the real world, data can be messy. Achieving 100% accuracy on the
+    training dataset often means the model has overfit the data, and may not
+    transfer well to unseen data. Getting below 100% here is fine.
 
     The solution:
     (((((f5 + f1) + ((f0 + f2) + (f4 + f3))) % ((f5 + ((-0.842402089280506 + f0) + -0.9056793454327423)) + ((f4 + (f1 + -0.916229145372748)) + (f3 + f2)))) %
@@ -99,6 +104,45 @@ data2:
 
     This is of course something quite difficult to pick apart.
 
-    After some parameter tuning...
+    To simplify, I added some constraints to the tree based solution:
+    * only use addition and modulo operators
+    * constants must be integers
+    * reduce reuse of features
+    * reduce rate of adding constants
+
+    The optimiser was also modified to more easily enforce the limits supplied.
+    Crossover was a difficult feature to support here, so it was removed and the
+    mutation rate was increased to keep the variance of solutions high. Somewhat
+    loosely representing an artificial immune system. This solved the problem at
+    98.34% again, but with much more simple solutions.
+
+    The solutions:
+        1st run
+        30% mutation rate, 1366 generations
+        (((((f1 + f2) + (f3 + f0)) + ((f4 + f4) + (-1 + f4))) + f5) % 2) < 0.44282579177624615
+
+        2nd run (reduced mutation rate due to low mean)
+        5% mutation rate, 604 generations
+        ((((3 + f1) + ((f0 + f4) + (f3 + f5))) + f2) % 2) < 0.6684807048908901
+
+    Interpreting these solutions, and cross referencing them with the dataset
+    looks like:
+
+        prediction = 0 if sum(features) % 2 == 0 else 1
+
+    Which means, if there are an even number of 1s in the features, the label is
+    0. Otherwise the label is 1.
+
+    It would seem the genetic programming implementation here is still prone to
+    overfitting the data, creating obscure additional logic. The equation:
+    `((f4 + f4) + (-1 + f4))` looks as though it could be reduced to `f4`.
+    Adding an automated way reward individuals with reduced complexity may be
+    helpful here in the future to solve more complex problems. This could be
+    achieved by adjusting the fitness function as follows:
+
+    fitness(tree) = (correct_count(tree, dataset) + (size(tree) / max_tree_size^-1)) / size(dataset)
+
+    Of course this solution still does not account for a portion of the dataset,
+    specifically 1 value: `000011 1`. This may just be due to it being bad data.
 
 ===============================
