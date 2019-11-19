@@ -18,15 +18,15 @@ bool Bounds::is_wildcard() {
 
 Bounds Bounds::mutate() {
     if (is_wildcard()) {
-        return rng() < ga->get_mutation_chance() ? random_bounds(ga) : *this;
+        return ga->should_mutate() ? random_bounds(ga) : *this;
     }
 
-    if (rng() < ga->get_mutation_chance()) {
+    if (ga->should_mutate()) {
         return Bounds(ga, LOWER_LIMIT, UPPER_LIMIT, true);
     }
 
-    auto new_lower = rng() < ga->get_mutation_chance() ? ((upper * rng()) + LOWER_LIMIT) : lower;
-    auto new_upper = rng() < ga->get_mutation_chance() ? ((UPPER_LIMIT * rng()) + new_lower) : upper;
+    auto new_lower = ga->should_mutate() ? uniform(LOWER_LIMIT, upper) : lower;
+    auto new_upper = ga->should_mutate() ? uniform(lower, UPPER_LIMIT) : upper;
     return Bounds(ga, new_lower, new_upper, false);
 }
 
@@ -61,8 +61,10 @@ Bounds random_bounds(GeneticAlgorithm *ga, double surrounding) {
 }
 
 Bounds random_bounds(GeneticAlgorithm *ga) {
-    double lower = uniform(LOWER_LIMIT, UPPER_LIMIT);
-    double upper = uniform(lower, UPPER_LIMIT);
+    double bound1 = uniform(LOWER_LIMIT, UPPER_LIMIT);
+    double bound2 = uniform(LOWER_LIMIT, UPPER_LIMIT);
+    double lower = std::min(bound1, bound2);
+    double upper = std::max(bound1, bound2);
     return Bounds(ga, lower, upper, false);
 }
 

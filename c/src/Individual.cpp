@@ -55,7 +55,7 @@ Individual Individual::mutate() {
 
     // randomly swap order of rules
     for (int i = 0; i < (rules.size() - 1); i++) {
-        if (rng() < ga->get_mutation_chance()) {
+        if (ga->should_mutate()) {
             std::iter_swap(new_rules.begin() + i, new_rules.begin() + i + 1);
         }
     }

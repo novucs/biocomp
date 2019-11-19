@@ -1,5 +1,5 @@
 # solution = "#,0,0,0,1,#,1,0,#,#,#,1,0,0,1,1,1,1,#,#,1,0,0,1,1,#,#,0,1,0,1,0,0,#,0,1,0,0,1,0,#,1,#,#,#,#,0,1,0,0,1,1,0,#,#,0,#,#,1,1,#,1,1,0,1,0,1,#,#,0,0,0,0,0,#,#,0,#,#,0,0,1,0,1,1,0,#,#,#,1,0,1,1,0,0,#,#,0,#,#,1,1,1,#,0,#,1,#,#,1,0,0,#,#,#,#,#,#,1"
-solution = "1.0,0.0,#,1.0,#,#,1,0,1.0,#,#,0,#,0,#,0.0,#,#,#,0,0,#,1,1,#,#,#,1,0.0,#,#,#,#,#,1,#,#,#,#,#,#,0 "
+solution = "1,1,0,1,1,0,0,0,1,1,1,0,1,0,0,0,#,1,1,0,0,0,1,1,0,1,0,1,0,0,1,0,0,0,1,0,1,0,1,0,0,0,#,1,1,1,#,1,1,1,1,1,0,0,0,1,#,0,1,0,0,#,0,0,#,1,#,0,1,1,1,1,0,0,1,1,0,1,0,0,1,0,0,0,#,#,1,#,0,1,0,0,0,#,0,#,1,1,1,1,#,0,#,1,1,#,1,1,0,#,#,0,#,#,0,1,#,0,1,1,1,#,#,1,#,1,0,0,#,#,0,#,0,0,#,1,#,1,#,0,#,#,0,0,1,1,1,#,#,#,1,1,0,0,#,#,#,0,#,1,0,0,#,#,#,0,#,1,#,1,#,#,#,#,0,#,#,#,#,0,#,1,1,#,0,#,#,#,0,#,#,#,#,#,#,1"
 rule_size = 7
 solution = [int(float(s)) if s != '#' else '#' for s in solution.split(',')]
 
@@ -41,6 +41,8 @@ def check_against_data2():
     for features, label in zip(train_x, train_y):
         if evaluate(solution, features) == label:
             correct += 1
+        else:
+            print("\tUnable to correctly predict:", ''.join(map(str, map(int, features))), int(label))
     fitness = correct / len(train_x)
     print()
     print(f'Achieved {correct}/{len(train_x)} ({fitness}) on training data')
@@ -55,7 +57,8 @@ def print_hard_coded_rules():
 
     print(f'Found {len(rules)} hardcoded rules:')
     for rule in rules:
-        print(f'\t{"".join(map(str, rule[:-1]))} {rule[-1]}')
+        rule_string = "".join(map(str, rule[:-1]))
+        print(f'\t{rule_string} {rule[-1]} {int(rule_string, 2)}')
 
 
 def main():

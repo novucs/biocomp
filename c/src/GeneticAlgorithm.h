@@ -18,8 +18,9 @@ private:
     Dataset test = Dataset();
     int rule_count = 60;
     int population_size = 100;
-    double crossover_chance = 0.5;
-    double mutation_chance = 0.003;
+    double crossover_chance = 0.85;
+    // number of times (on average) a mutation should happen in a single individual
+    double mutation_rate = 1.0;
     double selection_switch_threshold = 0.1;
     int covered_best_variations = 5;
     int tournament_size = 5;
@@ -46,7 +47,7 @@ private:
 public:
     GeneticAlgorithm(std::string dataset, std::vector<double> splits);
 
-    double get_mutation_chance();
+    bool should_mutate();
 
     int get_condition_size();
 

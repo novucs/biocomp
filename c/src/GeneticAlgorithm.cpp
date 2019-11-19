@@ -35,7 +35,7 @@ GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> spli
     file << "\trule_count:" << rule_count << std::endl;
     file << "\tpopulation_size:" << population_size << std::endl;
     file << "\tcrossover_chance:" << crossover_chance << std::endl;
-    file << "\tmutation_rate:" << mutation_chance << std::endl;
+    file << "\tmutation_rate:" << mutation_rate << std::endl;
     file << "\tselection_switch_threshold:" << selection_switch_threshold << std::endl;
     file << "\tcovered_best_variations:" << covered_best_variations << std::endl;
     file << "\ttournament_size:" << tournament_size << std::endl;
@@ -46,8 +46,8 @@ GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> spli
     file.close();
 }
 
-double GeneticAlgorithm::get_mutation_chance() {
-    return mutation_chance;
+bool GeneticAlgorithm::should_mutate() {
+    return rng() < mutation_rate / (rule_count * train.features.at(0).size());
 }
 
 int GeneticAlgorithm::get_condition_size() {
@@ -147,9 +147,15 @@ Individual GeneticAlgorithm::tournament_selection(std::vector<double> &populatio
 }
 
 Individual GeneticAlgorithm::create_offspring(std::vector<double> &population_fitness) {
-    Individual mum = tournament_selection(population_fitness);
-    Individual dad = tournament_selection(population_fitness);
-    Individual offspring = mum.crossover(dad).mutate();
+    Individual offspring;
+
+    if (rng() < crossover_chance) {
+        Individual mum = tournament_selection(population_fitness);
+        Individual dad = tournament_selection(population_fitness);
+        offspring = mum.crossover(dad).mutate();
+    } else {
+        offspring = tournament_selection(population_fitness).mutate();
+    }
 
     if (rng() < cover_chance) {
         offspring = offspring.cover(train);

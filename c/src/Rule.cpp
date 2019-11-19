@@ -37,7 +37,7 @@ Rule Rule::mutate() {
     for (Bounds &bounds : condition) {
         new_condition.push_back(bounds.mutate());
     }
-    int new_action = rng() < ga->get_mutation_chance() ? (int) std::round(rng()) : action;
+    int new_action = ga->should_mutate() ? (int) std::round(rng()) : action;
     return Rule(ga, new_condition, new_action);
 }
 
