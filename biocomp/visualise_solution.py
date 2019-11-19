@@ -27,10 +27,10 @@ from biocomp import datasets
 
 rule_size = 11
 solution = """
-##1####1#1 1
+##01#####0 1
 ##0###1##1 1
 ##1##1###0 1
-##01#####0 1
+##1####1#1 1
 ########## 0
 """.strip().replace(" ", "").replace("\n", "")
 solution = [int(float(s)) if s != '#' else '#' for s in solution]
