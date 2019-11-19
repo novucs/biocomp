@@ -70,7 +70,7 @@ class AdditionSubtreeNode(SubtreeNode):
 
 class ModuloSubtreeNode(SubtreeNode):
     def evaluate(self, features):
-        if self.children[1] == 0:
+        if self.children[1] == 0 or self.children[1].evaluate(features) == 0:
             return 0
         return self.children[0].evaluate(features) % self.children[1].evaluate(features)
 
@@ -163,8 +163,8 @@ def create_gene_inner(settings, depth=0) -> Node:
         return create_node({
             'odds_subtree_+': create_subtree_addition,
             'odds_subtree_%': create_subtree_modulo,
-            'odds_subtree_/': create_subtree_divide,
-            'odds_subtree_*': create_subtree_multiply,
+            # 'odds_subtree_/': create_subtree_divide,
+            # 'odds_subtree_*': create_subtree_multiply,
         })
 
     return create_leaf() if depth >= settings['max_depth'] else create_node({
@@ -256,12 +256,12 @@ def main():
         'odds_subtree': 2.0,
         'odds_leaf': 1.0,
         'odds_leaf_feature': 1.0,
-        'odds_leaf_constant': 1.0,
-        'odds_leaf_features_sum': 1.0,
-        'odds_subtree_+': 1.0,
+        'odds_leaf_constant': 0.1,
+        'odds_leaf_features_sum': 0.0,
+        'odds_subtree_+': 6.0,
         'odds_subtree_%': 1.0,
-        'odds_subtree_/': 1.0,
-        'odds_subtree_*': 1.0,
+        'odds_subtree_/': 0.0,
+        'odds_subtree_*': 0.0,
         'feature_count': len(features[0]),
     }
 

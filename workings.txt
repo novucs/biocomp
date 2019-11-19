@@ -69,4 +69,36 @@ data2:
         110011 0
         100100 0
 
+    Rule based solution is too complex to understand, and took a very long time
+    to converge, there must be a better way.
+
+    Learning from this dataset using a standard dense neural network seemed not
+    to fit very quickly either. Even with a large parameter space.
+
+    To try and get any function approximator to at least fit this dataset seemed
+    quite difficult.
+
+    So I decided to throw an even larger parameter space at the problem.
+    Using an LSTM enabled the network to fit quickly.
+    A simple recurrent neural network also achieved the same result.
+
+    This told me there is merit to representing the dataset as a sequence.
+
+    Simply using a neural network with many parameters is not going to make the
+    underlying structure of the data any more clear.
+
+    I implemented a genetic programming model to learn an equation that best
+    fit the dataset. It achieved a solution with 98.34% accuracy within 6272
+    generations.
+
+    The solution:
+    (((((f5 + f1) + ((f0 + f2) + (f4 + f3))) % ((f5 + ((-0.842402089280506 + f0) + -0.9056793454327423)) + ((f4 + (f1 + -0.916229145372748)) + (f3 + f2)))) %
+        ((f5 + ((f1 + f3) + (f2 + f0))) + (((f2 + f1) + f3) + ((f5 % 0.4679532670422235) + (-0.9211416668249195 + f0))))) +
+        ((((((f0 % f2) + (f0 + f0)) + (f0 + f4)) + (f5 + f0)) +
+        (((f0 % f2) + f2) + ((f2 + f4) + f0))) % f2)) < 0.41920992757675224
+
+    This is of course something quite difficult to pick apart.
+
+    After some parameter tuning...
+
 ===============================
