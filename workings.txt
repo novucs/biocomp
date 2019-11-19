@@ -16,6 +16,9 @@ data1:
     10 = 3rd bit
     11 = 4th bit
 
+    (negative example with bounds)
+    c/logs/data1/2019-11-19.19:12:08.log
+
 ===============================
 
 ===============================
