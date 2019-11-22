@@ -92,7 +92,7 @@ def plot_fitness_area(generation_count, logs, key, line_args=None, fill_args=Non
 
 
 def plot_logfile(logs, keys):
-    generation_count = 300
+    generation_count = 500
     for key in keys:
         plot_fitness_area(generation_count, logs, key)
     plt.xlabel("generations")
@@ -101,7 +101,7 @@ def plot_logfile(logs, keys):
 
 
 def main():
-    experiments = [
+    experiments = {
         # rule_count:60
         # population_size: 100
         # crossover_chance: 0.85
@@ -112,7 +112,7 @@ def main():
         # distill_inheritance_chance: 0.33
         # cover_chance: 0.1
         # fitness_threshold: 1
-        load_logfiles([
+        'dynamic_mutation': load_logfiles([
             "c/logs/data1/2019-11-22.05:30:55.log",
             "c/logs/data1/2019-11-22.05:31:31.log",
             "c/logs/data1/2019-11-22.05:32:06.log",
@@ -146,7 +146,7 @@ def main():
         # distill_inheritance_chance: 0.33
         # cover_chance: 0.1
         # fitness_threshold: 1
-        load_logfiles([
+        'static_mutation': load_logfiles([
             "c/logs/data1/2019-11-22.07:07:02.log",
             "c/logs/data1/2019-11-22.07:07:14.log",
             "c/logs/data1/2019-11-22.07:07:28.log",
@@ -157,6 +157,17 @@ def main():
             "c/logs/data1/2019-11-22.07:08:30.log",
             "c/logs/data1/2019-11-22.07:08:42.log",
             "c/logs/data1/2019-11-22.07:08:55.log",
+
+            "c/logs/data1/2019-11-22.07:46:00.log",
+            "c/logs/data1/2019-11-22.07:46:11.log",
+            "c/logs/data1/2019-11-22.07:46:23.log",
+            "c/logs/data1/2019-11-22.07:46:36.log",
+            "c/logs/data1/2019-11-22.07:46:49.log",
+            "c/logs/data1/2019-11-22.07:47:01.log",
+            "c/logs/data1/2019-11-22.07:47:12.log",
+            "c/logs/data1/2019-11-22.07:47:25.log",
+            "c/logs/data1/2019-11-22.07:47:37.log",
+            "c/logs/data1/2019-11-22.07:47:48.log",
         ]),
 
         # rule_count:5
@@ -169,7 +180,7 @@ def main():
         # distill_inheritance_chance: 0.33
         # cover_chance: 0.1
         # fitness_threshold: 1.66667
-        load_logfiles([
+        'static_rule_count': load_logfiles([
             "c/logs/data1/2019-11-22.07:17:15.log",
             "c/logs/data1/2019-11-22.07:17:22.log",
             "c/logs/data1/2019-11-22.07:17:29.log",
@@ -181,13 +192,40 @@ def main():
             "c/logs/data1/2019-11-22.07:18:11.log",
             "c/logs/data1/2019-11-22.07:18:18.log",
         ]),
-    ]
 
-    plot_logfile(experiments[0], ['train_fitness_best', 'train_fitness_mean'])
+        # rule_count:60
+        # population_size: 100
+        # crossover_chance: 0.85
+        # mutation_rate: 0.003
+        # use_tournament_selection: false
+        # selection_switch_threshold: 0.1
+        # covered_best_variations: 5
+        # tournament_size: 5
+        # distill_inheritance_chance: 0.33
+        # cover_chance: 0.1
+        # fitness_threshold: 1
+        'roulette_wheel_selection': load_logfiles([
+            "c/logs/data1/2019-11-22.08:05:56.log",
+            "c/logs/data1/2019-11-22.08:06:14.log",
+            "c/logs/data1/2019-11-22.08:06:35.log",
+            "c/logs/data1/2019-11-22.08:06:59.log",
+            "c/logs/data1/2019-11-22.08:07:20.log",
+            "c/logs/data1/2019-11-22.08:07:43.log",
+            "c/logs/data1/2019-11-22.08:08:05.log",
+            "c/logs/data1/2019-11-22.08:08:27.log",
+            "c/logs/data1/2019-11-22.08:08:51.log",
+            "c/logs/data1/2019-11-22.08:09:13.log",
+        ]),
+    }
+
+    plot_logfile(experiments['dynamic_mutation'], ['train_fitness_best', 'train_fitness_mean'])
     plt.title('data1 - mutation adjusted by rule size')
     plt.show()
-    plot_logfile(experiments[1], ['train_fitness_best', 'train_fitness_mean'])
-    plt.title('data1 - fixed mutation rate')
+    plot_logfile(experiments['static_mutation'], ['train_fitness_best', 'train_fitness_mean'])
+    plt.title('data1 - fixed mutation rate (0.003)')
+    plt.show()
+    plot_logfile(experiments['roulette_wheel_selection'], ['train_fitness_best', 'train_fitness_mean'])
+    plt.title('data1 - roulette wheel selection')
     plt.show()
 
 

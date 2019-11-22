@@ -20,6 +20,7 @@ private:
     int population_size = 100;
     double crossover_chance = 0.85;
     double mutation_rate = 0.003;
+    bool use_tournament_selection = false;  // false uses roulette wheel selection
     double selection_switch_threshold = 0.1;
     int covered_best_variations = 5;
     int tournament_size = 5;
@@ -57,9 +58,13 @@ public:
 
     std::vector<Individual> generate_covered_population();
 
-    Individual tournament_selection(std::vector<double> &population_fitness);
+    Individual roulette_wheel_selection(FitnessAggregate &fitness_aggregate);
 
-    Individual create_offspring(std::vector<double> &population_fitness);
+    Individual tournament_selection(FitnessAggregate &fitness_aggregate);
+
+    Individual select_parent(FitnessAggregate &fitness_aggregate);
+
+    Individual create_offspring(FitnessAggregate &fitness_aggregate);
 
     void run();
 

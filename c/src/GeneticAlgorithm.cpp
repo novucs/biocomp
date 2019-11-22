@@ -36,6 +36,7 @@ GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> spli
     file << "\tpopulation_size:" << population_size << std::endl;
     file << "\tcrossover_chance:" << crossover_chance << std::endl;
     file << "\tmutation_rate:" << mutation_rate << std::endl;
+    file << "\tuse_tournament_selection:" << use_tournament_selection << std::endl;
     file << "\tselection_switch_threshold:" << selection_switch_threshold << std::endl;
     file << "\tcovered_best_variations:" << covered_best_variations << std::endl;
     file << "\ttournament_size:" << tournament_size << std::endl;
@@ -133,28 +134,45 @@ std::vector<Individual> GeneticAlgorithm::generate_covered_population() {
     return target;
 }
 
-Individual GeneticAlgorithm::tournament_selection(std::vector<double> &population_fitness) {
+Individual GeneticAlgorithm::roulette_wheel_selection(FitnessAggregate &fitness_aggregate) {
+    double cumulative = 0;
+    int dial = rng() * fitness_aggregate.total;
+    for (int i = 0; i < population_size; i++) {
+        cumulative += fitness_aggregate.values.at(i);
+        if (dial <= cumulative) {
+            return population.at(i);
+        }
+    }
+    return population.at(population_size - 1);
+}
+
+Individual GeneticAlgorithm::tournament_selection(FitnessAggregate &fitness_aggregate) {
     Individual fittest = generate_individual(this);
     double fitness = -1;
     for (int i = 0; i < tournament_size; i++) {
         int index = rng() * population_size;
-        if (population_fitness.at(index) > fitness) {
-            fitness = population_fitness.at(index);
+        if (fitness_aggregate.values.at(index) > fitness) {
+            fitness = fitness_aggregate.values.at(index);
             fittest = population.at(index);
         }
     }
     return fittest;
 }
 
-Individual GeneticAlgorithm::create_offspring(std::vector<double> &population_fitness) {
+Individual GeneticAlgorithm::select_parent(FitnessAggregate &fitness_aggregate) {
+    return use_tournament_selection ? tournament_selection(fitness_aggregate)
+                                    : roulette_wheel_selection(fitness_aggregate);
+}
+
+Individual GeneticAlgorithm::create_offspring(FitnessAggregate &fitness_aggregate) {
     Individual offspring;
 
     if (rng() < crossover_chance) {
-        Individual mum = tournament_selection(population_fitness);
-        Individual dad = tournament_selection(population_fitness);
+        Individual mum = select_parent(fitness_aggregate);
+        Individual dad = select_parent(fitness_aggregate);
         offspring = mum.crossover(dad).mutate();
     } else {
-        offspring = tournament_selection(population_fitness).mutate();
+        offspring = select_parent(fitness_aggregate).mutate();
     }
 
     if (rng() < cover_chance) {
@@ -224,9 +242,9 @@ void GeneticAlgorithm::train_step() {
         // todo: see if rule count could be used here
         // weigh selection fitness by that of the cross-validation set when over fitting
         if ((rng() * mean_fitness_difference) > selection_switch_threshold) {
-            new_population.push_back(create_offspring(cross_validation_fitness.values));
+            new_population.push_back(create_offspring(cross_validation_fitness));
         } else {
-            new_population.push_back(create_offspring(train_fitness.values));
+            new_population.push_back(create_offspring(train_fitness));
         }
     }
 
