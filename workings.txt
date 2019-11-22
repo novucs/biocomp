@@ -342,6 +342,8 @@ data4:
         data4 = data3 with first feature pushed to the back, and 4 dummy
                 features randomly added
 
+    5 rules converged on laptop @ c/logs/data4/2019-11-19.12:25:21.log
+
 ===============================
 
 01#0## 0
