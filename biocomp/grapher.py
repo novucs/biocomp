@@ -216,6 +216,54 @@ def main():
             "c/logs/data1/2019-11-22.08:08:51.log",
             "c/logs/data1/2019-11-22.08:09:13.log",
         ]),
+
+        # rule_count: 60
+        # population_size: 100
+        # crossover_chance: 0.85
+        # mutation_rate: 0.01
+        # use_tournament_selection: 1
+        # selection_switch_threshold: 0.1
+        # covered_best_variations: 5
+        # tournament_size: 5
+        # distill_inheritance_chance: 0.33
+        # cover_chance: 0.1
+        # fitness_threshold: 1
+        'boosted_mutation': load_logfiles([
+            "c/logs/data1/2019-11-22.08:18:21.log",
+            "c/logs/data1/2019-11-22.08:18:36.log",
+            "c/logs/data1/2019-11-22.08:18:47.log",
+            "c/logs/data1/2019-11-22.08:19:05.log",
+            "c/logs/data1/2019-11-22.08:19:22.log",
+            "c/logs/data1/2019-11-22.08:19:34.log",
+            "c/logs/data1/2019-11-22.08:19:47.log",
+            "c/logs/data1/2019-11-22.08:20:02.log",
+            "c/logs/data1/2019-11-22.08:20:18.log",
+            "c/logs/data1/2019-11-22.08:20:37.log",
+        ]),
+
+        # rule_count: 60
+        # population_size: 100
+        # crossover_chance: 0.5
+        # mutation_rate: 0.003
+        # use_tournament_selection: 1
+        # selection_switch_threshold: 0.1
+        # covered_best_variations: 5
+        # tournament_size: 5
+        # distill_inheritance_chance: 0.33
+        # cover_chance: 0.1
+        # fitness_threshold: 1
+        'decreased_crossover': load_logfiles([
+            "c/logs/data1/2019-11-22.08:23:45.log",
+            "c/logs/data1/2019-11-22.08:23:57.log",
+            "c/logs/data1/2019-11-22.08:24:08.log",
+            "c/logs/data1/2019-11-22.08:24:18.log",
+            "c/logs/data1/2019-11-22.08:24:27.log",
+            "c/logs/data1/2019-11-22.08:24:39.log",
+            "c/logs/data1/2019-11-22.08:24:48.log",
+            "c/logs/data1/2019-11-22.08:24:58.log",
+            "c/logs/data1/2019-11-22.08:25:07.log",
+            "c/logs/data1/2019-11-22.08:25:18.log",
+        ]),
     }
 
     plot_logfile(experiments['dynamic_mutation'], ['train_fitness_best', 'train_fitness_mean'])
@@ -226,6 +274,12 @@ def main():
     plt.show()
     plot_logfile(experiments['roulette_wheel_selection'], ['train_fitness_best', 'train_fitness_mean'])
     plt.title('data1 - roulette wheel selection')
+    plt.show()
+    plot_logfile(experiments['boosted_mutation'], ['train_fitness_best', 'train_fitness_mean'])
+    plt.title('data1 - boosted mutation rate (0.01)')
+    plt.show()
+    plot_logfile(experiments['decreased_crossover'], ['train_fitness_best', 'train_fitness_mean'])
+    plt.title('data1 - decreased crossover rate 75% -> 50%')
     plt.show()
 
 

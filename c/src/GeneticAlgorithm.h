@@ -18,9 +18,9 @@ private:
     Dataset test = Dataset();
     int rule_count = 60;
     int population_size = 100;
-    double crossover_chance = 0.85;
+    double crossover_chance = 0.5;
     double mutation_rate = 0.003;
-    bool use_tournament_selection = false;  // false uses roulette wheel selection
+    bool use_tournament_selection = true;  // false uses roulette wheel selection
     double selection_switch_threshold = 0.1;
     int covered_best_variations = 5;
     int tournament_size = 5;
