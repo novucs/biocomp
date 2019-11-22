@@ -264,6 +264,30 @@ def main():
             "c/logs/data1/2019-11-22.08:25:07.log",
             "c/logs/data1/2019-11-22.08:25:18.log",
         ]),
+
+        # rule_count: 60
+        # population_size: 50
+        # crossover_chance: 0.5
+        # mutation_rate: 0.003
+        # use_tournament_selection: 1
+        # selection_switch_threshold: 0.1
+        # covered_best_variations: 5
+        # tournament_size: 5
+        # distill_inheritance_chance: 0.33
+        # cover_chance: 0.1
+        # fitness_threshold: 1
+        'half_population_size': load_logfiles([
+            "c/logs/data1/2019-11-22.08:34:08.log",
+            "c/logs/data1/2019-11-22.08:34:16.log",
+            "c/logs/data1/2019-11-22.08:34:23.log",
+            "c/logs/data1/2019-11-22.08:34:31.log",
+            "c/logs/data1/2019-11-22.08:34:38.log",
+            "c/logs/data1/2019-11-22.08:34:45.log",
+            "c/logs/data1/2019-11-22.08:34:52.log",
+            "c/logs/data1/2019-11-22.08:34:59.log",
+            "c/logs/data1/2019-11-22.08:35:05.log",
+            "c/logs/data1/2019-11-22.08:35:13.log",
+        ]),
     }
 
     plot_logfile(experiments['dynamic_mutation'], ['train_fitness_best', 'train_fitness_mean'])
@@ -279,7 +303,10 @@ def main():
     plt.title('data1 - boosted mutation rate (0.01)')
     plt.show()
     plot_logfile(experiments['decreased_crossover'], ['train_fitness_best', 'train_fitness_mean'])
-    plt.title('data1 - decreased crossover rate 75% -> 50%')
+    plt.title('data1 - decreased crossover rate 85% -> 50%')
+    plt.show()
+    plot_logfile(experiments['half_population_size'], ['train_fitness_best', 'train_fitness_mean'])
+    plt.title('data1 - half population size 100 -> 50')
     plt.show()
 
 
