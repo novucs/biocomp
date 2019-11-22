@@ -19,8 +19,7 @@ private:
     int rule_count = 60;
     int population_size = 100;
     double crossover_chance = 0.85;
-    // number of times (on average) a mutation should happen in a single individual
-    double mutation_rate = 1.0;
+    double mutation_rate = 0.003;
     double selection_switch_threshold = 0.1;
     int covered_best_variations = 5;
     int tournament_size = 5;
@@ -38,11 +37,8 @@ private:
     ThreadPool *executor;
     std::mutex mutex;
     bool running = true;
-
-    // simulated annealing - increasing/decreasing rule count
-    double cooling_rate = 0.001;
-    double temperature = 1.0;
-    int generations_since_success = 0; // may be of use for increasing temperature + rule count
+    bool load_population_from_file = false;
+    int max_generation_count = 500;
 
 public:
     GeneticAlgorithm(std::string dataset, std::vector<double> splits);

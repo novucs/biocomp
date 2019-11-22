@@ -47,7 +47,7 @@ GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> spli
 }
 
 bool GeneticAlgorithm::should_mutate() {
-    return rng() < mutation_rate / (rule_count * train.features.at(0).size());
+    return rng() < mutation_rate;
 }
 
 int GeneticAlgorithm::get_condition_size() {
@@ -165,7 +165,12 @@ Individual GeneticAlgorithm::create_offspring(std::vector<double> &population_fi
 }
 
 void GeneticAlgorithm::run() {
-    load_population("../solutions.txt");
+    if (load_population_from_file) {
+        load_population("../solutions.txt");
+    } else {
+        population = generate_covered_population();
+    }
+
     generation = 0;
     while (running) {
         {
@@ -174,6 +179,10 @@ void GeneticAlgorithm::run() {
             train_step();
             if (generation % 50 == 0) {
                 display_test_results();
+            }
+
+            if (generation >= max_generation_count && max_generation_count > 0) {
+                running = false;
             }
         }
         std::this_thread::sleep_for(std::chrono::microseconds(1));

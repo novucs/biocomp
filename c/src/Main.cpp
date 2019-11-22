@@ -13,21 +13,18 @@ int main(int argc, char *argv[]) {
 
     std::string dataset(argv[1]);
     double train = std::stod(argv[2]);
-    double cross_validation = 1.0;
-    double test = 1.0;
+    std::vector<double> splits = {train};
 
     if (argc == 5) {
-        cross_validation = std::stod(argv[3]);
-        test = std::stod(argv[4]);
+        double cross_validation = std::stod(argv[3]);
+        double test = std::stod(argv[4]);
+        splits = {train, cross_validation, test};
     }
 
-    GeneticAlgorithm ga =
-            argc == 5 ? GeneticAlgorithm(dataset, {train, cross_validation, test}) : GeneticAlgorithm(dataset, {train});
-    std::thread ga_thread(&GeneticAlgorithm::run, &ga);
+    for (int i = 0; i < 10; i++) {
+        GeneticAlgorithm ga = GeneticAlgorithm(dataset, splits);
+        ga.run();
+    }
 
-    std::string throwaway;
-    std::getline(std::cin, throwaway);
-    ga.terminate();
-    ga_thread.join();
     return 0;
 }
