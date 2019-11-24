@@ -100,7 +100,7 @@ def plot_logfile(logs, keys):
         plot_fitness_area(generation_count, logs, key)
     plt.xlabel("generations")
     plt.ylabel("fitness")
-    plt.legend(loc="upper left")
+    plt.legend(loc="lower right")
 
 
 def main():
@@ -127,16 +127,16 @@ def main():
             "c/logs/data1/2019-11-22.05:38:35.log",
             "c/logs/data1/2019-11-22.05:39:12.log",
 
-            "c/logs/data1/2019-11-22.06:49:03.log",
-            "c/logs/data1/2019-11-22.06:49:13.log",
-            "c/logs/data1/2019-11-22.06:49:25.log",
-            "c/logs/data1/2019-11-22.06:49:36.log",
-            "c/logs/data1/2019-11-22.06:49:46.log",
-            "c/logs/data1/2019-11-22.06:50:00.log",
-            "c/logs/data1/2019-11-22.06:50:11.log",
-            "c/logs/data1/2019-11-22.06:50:23.log",
-            "c/logs/data1/2019-11-22.06:50:35.log",
-            "c/logs/data1/2019-11-22.06:50:46.log",
+            # "c/logs/data1/2019-11-22.06:49:03.log",
+            # "c/logs/data1/2019-11-22.06:49:13.log",
+            # "c/logs/data1/2019-11-22.06:49:25.log",
+            # "c/logs/data1/2019-11-22.06:49:36.log",
+            # "c/logs/data1/2019-11-22.06:49:46.log",
+            # "c/logs/data1/2019-11-22.06:50:00.log",
+            # "c/logs/data1/2019-11-22.06:50:11.log",
+            # "c/logs/data1/2019-11-22.06:50:23.log",
+            # "c/logs/data1/2019-11-22.06:50:35.log",
+            # "c/logs/data1/2019-11-22.06:50:46.log",
         ]),
 
         # rule_count:60
@@ -161,16 +161,16 @@ def main():
             "c/logs/data1/2019-11-22.07:08:42.log",
             "c/logs/data1/2019-11-22.07:08:55.log",
 
-            "c/logs/data1/2019-11-22.07:46:00.log",
-            "c/logs/data1/2019-11-22.07:46:11.log",
-            "c/logs/data1/2019-11-22.07:46:23.log",
-            "c/logs/data1/2019-11-22.07:46:36.log",
-            "c/logs/data1/2019-11-22.07:46:49.log",
-            "c/logs/data1/2019-11-22.07:47:01.log",
-            "c/logs/data1/2019-11-22.07:47:12.log",
-            "c/logs/data1/2019-11-22.07:47:25.log",
-            "c/logs/data1/2019-11-22.07:47:37.log",
-            "c/logs/data1/2019-11-22.07:47:48.log",
+            # "c/logs/data1/2019-11-22.07:46:00.log",
+            # "c/logs/data1/2019-11-22.07:46:11.log",
+            # "c/logs/data1/2019-11-22.07:46:23.log",
+            # "c/logs/data1/2019-11-22.07:46:36.log",
+            # "c/logs/data1/2019-11-22.07:46:49.log",
+            # "c/logs/data1/2019-11-22.07:47:01.log",
+            # "c/logs/data1/2019-11-22.07:47:12.log",
+            # "c/logs/data1/2019-11-22.07:47:25.log",
+            # "c/logs/data1/2019-11-22.07:47:37.log",
+            # "c/logs/data1/2019-11-22.07:47:48.log",
         ]),
 
         # rule_count:5
