@@ -94,15 +94,6 @@ def plot_fitness_area(generation_count, logs, key, line_args=None, fill_args=Non
     axes.set_xlim([0, generation_count])
 
 
-def plot_logfile(logs, keys):
-    generation_count = 500
-    for key in keys:
-        plot_fitness_area(generation_count, logs, key)
-    plt.xlabel("generations")
-    plt.ylabel("fitness")
-    plt.legend(loc="lower right")
-
-
 def main():
     experiments = {
         # rule_count:60
@@ -291,6 +282,19 @@ def main():
             "c/logs/data1/2019-11-22.08:35:05.log",
             "c/logs/data1/2019-11-22.08:35:13.log",
         ]),
+
+        'data2_lcs': load_logfiles([
+            "c/logs/data2/2019-11-24.06:16:24.log",
+            "c/logs/data2/2019-11-24.06:17:30.log",
+            "c/logs/data2/2019-11-24.06:18:33.log",
+            "c/logs/data2/2019-11-24.06:19:49.log",
+            "c/logs/data2/2019-11-24.06:20:55.log",
+            "c/logs/data2/2019-11-24.06:21:57.log",
+            "c/logs/data2/2019-11-24.06:23:20.log",
+            "c/logs/data2/2019-11-24.06:24:22.log",
+            "c/logs/data2/2019-11-24.06:25:27.log",
+            "c/logs/data2/2019-11-24.06:26:33.log",
+        ]),
     }
 
     for name, description in {
@@ -301,7 +305,21 @@ def main():
         'decreased_crossover': 'data1 - decreased crossover rate 85% -> 50%',
         'half_population_size': 'data1 - half population size 100 -> 50',
     }.items():
-        plot_logfile(experiments[name], ['train_fitness_best', 'train_fitness_mean'])
+        for key in ['train_fitness_best', 'train_fitness_mean']:
+            plot_fitness_area(500, experiments[name], key)
+        plt.xlabel("generations")
+        plt.ylabel("fitness")
+        plt.legend(loc="lower right")
+        plt.title(description)
+        plt.savefig(f'graphs/{name}.png')
+        plt.show()
+
+    for name, description in {'data2_lcs': 'data2 - model by rules'}.items():
+        for key in ['train_fitness_best', 'train_fitness_mean']:
+            plot_fitness_area(1000, experiments[name], key)
+        plt.xlabel("generations")
+        plt.ylabel("fitness")
+        plt.legend(loc="upper left")
         plt.title(description)
         plt.savefig(f'graphs/{name}.png')
         plt.show()

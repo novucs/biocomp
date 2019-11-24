@@ -39,7 +39,7 @@ private:
     std::mutex mutex;
     bool running = true;
     bool load_population_from_file = false;
-    int max_generation_count = 500;
+    int max_generation_count = 1000;
 
 public:
     GeneticAlgorithm(std::string dataset, std::vector<double> splits);
