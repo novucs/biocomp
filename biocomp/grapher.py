@@ -89,6 +89,9 @@ def plot_fitness_area(generation_count, logs, key, line_args=None, fill_args=Non
         linewidth=0,
         **fill_args,
     )
+    axes = plt.gca()
+    axes.set_ylim([0, 1])
+    axes.set_xlim([0, generation_count])
 
 
 def plot_logfile(logs, keys):
@@ -290,24 +293,18 @@ def main():
         ]),
     }
 
-    plot_logfile(experiments['dynamic_mutation'], ['train_fitness_best', 'train_fitness_mean'])
-    plt.title('data1 - mutation adjusted by rule size')
-    plt.show()
-    plot_logfile(experiments['static_mutation'], ['train_fitness_best', 'train_fitness_mean'])
-    plt.title('data1 - fixed mutation rate (0.003)')
-    plt.show()
-    plot_logfile(experiments['roulette_wheel_selection'], ['train_fitness_best', 'train_fitness_mean'])
-    plt.title('data1 - roulette wheel selection')
-    plt.show()
-    plot_logfile(experiments['boosted_mutation'], ['train_fitness_best', 'train_fitness_mean'])
-    plt.title('data1 - boosted mutation rate (0.01)')
-    plt.show()
-    plot_logfile(experiments['decreased_crossover'], ['train_fitness_best', 'train_fitness_mean'])
-    plt.title('data1 - decreased crossover rate 85% -> 50%')
-    plt.show()
-    plot_logfile(experiments['half_population_size'], ['train_fitness_best', 'train_fitness_mean'])
-    plt.title('data1 - half population size 100 -> 50')
-    plt.show()
+    for name, description in {
+        'dynamic_mutation': 'data1 - mutation adjusted by rule size',
+        'static_mutation': 'data1 - fixed mutation rate (0.003)',
+        'roulette_wheel_selection': 'data1 - roulette wheel selection',
+        'boosted_mutation': 'data1 - boosted mutation rate (0.01)',
+        'decreased_crossover': 'data1 - decreased crossover rate 85% -> 50%',
+        'half_population_size': 'data1 - half population size 100 -> 50',
+    }.items():
+        plot_logfile(experiments[name], ['train_fitness_best', 'train_fitness_mean'])
+        plt.title(description)
+        plt.savefig(f'graphs/{name}.png')
+        plt.show()
 
 
 if __name__ == '__main__':
