@@ -11,7 +11,7 @@ from biocomp import datasets
 
 class GlobalSettings:
     max_depth = 7
-    max_size = 16
+    max_size = 32
     threshold_max = 1.0
     threshold_min = -1.0
     constant_max = 5.0
@@ -117,7 +117,7 @@ class ModuloSubtreeNode(SubtreeNode):
 
 class DivisionSubtreeNode(SubtreeNode):
     def evaluate(self, features):
-        if self.children[1] == 0:
+        if self.children[1].evaluate(features) == 0:
             return 0
         return self.children[0].evaluate(features) / self.children[1].evaluate(features)
 
@@ -351,8 +351,18 @@ def crossover(mum: RootNode, dad: RootNode) -> RootNode:
     return mum.copy()
 
 
+def random_subtree():
+    return random.choice((
+        AdditionSubtreeNode,
+        ModuloSubtreeNode,
+        DivisionSubtreeNode,
+        MultiplicationSubtreeNode,
+    ))
+
+
 def mutate(node: RootNode, mutation_chance):
-    original = node.copy()
+    import copy
+    original = copy.deepcopy(node.copy())
 
     for i in range(100):
         node = original.copy()
@@ -360,22 +370,27 @@ def mutate(node: RootNode, mutation_chance):
 
         for child, parent, path in iterate_node(node):
             if random.uniform(0, 1) < mutation_chance:
-                # update tree settings
-                for grandchild, *_ in iterate_node(parent.children[path[-1]]):
-                    settings.size -= 1
-                    if isinstance(grandchild, FeatureLeafNode):
-                        settings.feature_repeats[grandchild.feature] -= 1
-                    elif isinstance(grandchild, ConstantLeafNode):
-                        settings.constant_count -= 1
-                # replace child
-                replacement = NodeBuilder(settings, len(path)).build()
-                parent.children[path[-1]] = replacement
+
+                if isinstance(child, SubtreeNode) and random.choice((True, False)):
+                    parent.children[path[-1]] = random_subtree()(child.children)
+                else:
+                    # update tree settings
+                    for grandchild, *_ in iterate_node(parent.children[path[-1]]):
+                        settings.size -= 1
+                        if isinstance(grandchild, FeatureLeafNode):
+                            settings.feature_repeats[grandchild.feature] -= 1
+                        elif isinstance(grandchild, ConstantLeafNode):
+                            settings.constant_count -= 1
+                    # replace child
+                    replacement = NodeBuilder(settings, len(path)).build()
+                    parent.children[path[-1]] = replacement
+
         if random.uniform(0, 1) < mutation_chance:
             node.threshold = create_threshold()
 
         if node.is_valid():
             return node
-    print('help')
+
     return None
 
 
@@ -392,7 +407,7 @@ def main():
     features, labels, *_ = datasets.split(datasets.load_dataset_2())
     population_size = 50
     crossover_chance = 0.85
-    mutation_chance = 0.003
+    mutation_chance = 0.5
     tournament_size = 5
     GlobalSettings.feature_count = len(features[0])
     population = [create_node() for _ in range(population_size)]
@@ -436,14 +451,9 @@ def main():
             for mum, dad in zip(population, reversed(population))
         ]
 
-        if any(not p.is_valid() for p in population):
-            print('x')
-
         # mutation
         population = [mutate(individual, mutation_chance) for individual in population]
 
-        if any(not p.is_valid() for p in population):
-            print('x')
 
 if __name__ == '__main__':
     main()

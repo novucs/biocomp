@@ -3,3 +3,4 @@ venv
 *.pyc
 alternatives.txt
 alternatives2.txt
+logs/
