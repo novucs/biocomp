@@ -1,3 +1,5 @@
+import re
+
 import matplotlib.pyplot as plt
 
 
@@ -17,6 +19,28 @@ def load_logfiles(names):
 
         settings = dict(l.strip().split(':', maxsplit=1) for l in lines if l.startswith('\t'))
         entries = [dict(v.split(":", maxsplit=1) for v in l.split(" ")) for l in lines if "generation" in l]
+
+        if len(entries) == 0:
+            print('Empty log:', name)
+            continue
+
+        logfiles.append(Log(settings, entries, name))
+
+    return logfiles
+
+
+def load_tree_logfiles(names):
+    logfiles = []
+
+    for name in names:
+        with open(name, "r") as f:
+            lines = f.readlines()
+
+        settings = {'rule_count': 1}
+        entries = [{v.split(':')[0]: v.split(':')[1].strip() for v in l.split('\t')} for l in lines]
+
+        for entry in entries:
+            entry['rule_count'] = 0
 
         if len(entries) == 0:
             print('Empty log:', name)
@@ -295,27 +319,50 @@ def main():
             "c/logs/data2/2019-11-24.06:25:27.log",
             "c/logs/data2/2019-11-24.06:26:33.log",
         ]),
+
+        'data2_tree': load_tree_logfiles([
+            "logs/2019-11-26 11:22:51.444333.log",
+            "logs/2019-11-26 11:24:54.416094.log",
+            "logs/2019-11-26 11:26:26.850369.log",
+            "logs/2019-11-26 11:27:51.043042.log",
+            "logs/2019-11-26 11:30:16.528040.log",
+            "logs/2019-11-26 11:31:22.018663.log",
+            "logs/2019-11-26 11:32:39.541524.log",
+            "logs/2019-11-26 11:34:16.896466.log",
+            "logs/2019-11-26 11:35:29.016209.log",
+            "logs/2019-11-26 11:37:26.206267.log",
+        ]),
     }
 
-    for name, description in {
-        'dynamic_mutation': 'data1 - mutation adjusted by rule size',
-        'static_mutation': 'data1 - fixed mutation rate (0.003)',
-        'roulette_wheel_selection': 'data1 - roulette wheel selection',
-        'boosted_mutation': 'data1 - boosted mutation rate (0.01)',
-        'decreased_crossover': 'data1 - decreased crossover rate 85% -> 50%',
-        'half_population_size': 'data1 - half population size 100 -> 50',
-    }.items():
-        for key in ['train_fitness_best', 'train_fitness_mean']:
-            plot_fitness_area(500, experiments[name], key)
-        plt.xlabel("generations")
-        plt.ylabel("fitness")
-        plt.legend(loc="lower right")
-        plt.title(description)
-        plt.savefig(f'graphs/{name}.png')
-        plt.show()
+    # for name, description in {
+    #     'dynamic_mutation': 'data1 - mutation adjusted by rule size',
+    #     'static_mutation': 'data1 - fixed mutation rate (0.003)',
+    #     'roulette_wheel_selection': 'data1 - roulette wheel selection',
+    #     'boosted_mutation': 'data1 - boosted mutation rate (0.01)',
+    #     'decreased_crossover': 'data1 - decreased crossover rate 85% -> 50%',
+    #     'half_population_size': 'data1 - half population size 100 -> 50',
+    # }.items():
+    #     for key in ['train_fitness_best', 'train_fitness_mean']:
+    #         plot_fitness_area(500, experiments[name], key)
+    #     plt.xlabel("generations")
+    #     plt.ylabel("fitness")
+    #     plt.legend(loc="lower right")
+    #     plt.title(description)
+    #     plt.savefig(f'graphs/{name}.png')
+    #     plt.show()
+    #
+    # for name, description in {'data2_lcs': 'data2 - model by rules'}.items():
+    #     for key in ['train_fitness_best', 'train_fitness_mean']:
+    #         plot_fitness_area(1000, experiments[name], key)
+    #     plt.xlabel("generations")
+    #     plt.ylabel("fitness")
+    #     plt.legend(loc="upper left")
+    #     plt.title(description)
+    #     plt.savefig(f'graphs/{name}.png')
+    #     plt.show()
 
-    for name, description in {'data2_lcs': 'data2 - model by rules'}.items():
-        for key in ['train_fitness_best', 'train_fitness_mean']:
+    for name, description in {'data2_tree': 'data2 - model by tree'}.items():
+        for key in ['Best', 'Mean']:
             plot_fitness_area(1000, experiments[name], key)
         plt.xlabel("generations")
         plt.ylabel("fitness")
