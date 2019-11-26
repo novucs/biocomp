@@ -20,6 +20,13 @@ def load_logfiles(names):
         settings = dict(l.strip().split(':', maxsplit=1) for l in lines if l.startswith('\t'))
         entries = [dict(v.split(":", maxsplit=1) for v in l.split(" ")) for l in lines if "generation" in l]
 
+        if 'rule_count' not in settings:
+            settings['rule_count'] = 1
+
+        for entry in entries:
+            if 'rule_count' not in entry:
+                entry['rule_count'] = 0
+
         if len(entries) == 0:
             print('Empty log:', name)
             continue
@@ -332,6 +339,19 @@ def main():
             "logs/2019-11-26 11:35:29.016209.log",
             "logs/2019-11-26 11:37:26.206267.log",
         ]),
+
+        'data2_tree_lo_cross_hi_mut': load_logfiles([
+            "logs/2019-11-26 12:48:56.313553.log",
+            "logs/2019-11-26 12:50:18.238126.log",
+            "logs/2019-11-26 12:52:05.559672.log",
+            "logs/2019-11-26 12:53:41.821142.log",
+            "logs/2019-11-26 12:55:27.117888.log",
+            "logs/2019-11-26 12:56:50.880219.log",
+            "logs/2019-11-26 12:58:52.824440.log",
+            "logs/2019-11-26 13:00:40.558165.log",
+            "logs/2019-11-26 13:02:17.178818.log",
+            "logs/2019-11-26 13:04:12.115433.log",
+        ]),
     }
 
     # for name, description in {
@@ -361,8 +381,18 @@ def main():
     #     plt.savefig(f'graphs/{name}.png')
     #     plt.show()
 
-    for name, description in {'data2_tree': 'data2 - model by tree'}.items():
-        for key in ['Best', 'Mean']:
+    # for name, description in {'data2_tree': 'data2 - model by tree'}.items():
+    #     for key in ['Best', 'Mean']:
+    #         plot_fitness_area(1000, experiments[name], key)
+    #     plt.xlabel("generations")
+    #     plt.ylabel("fitness")
+    #     plt.legend(loc="upper left")
+    #     plt.title(description)
+    #     plt.savefig(f'graphs/{name}.png')
+    #     plt.show()
+
+    for name, description in {'data2_tree_lo_cross_hi_mut': 'data2 - model by tree 2'}.items():
+        for key in ['train_fitness_best', 'train_fitness_mean']:
             plot_fitness_area(1000, experiments[name], key)
         plt.xlabel("generations")
         plt.ylabel("fitness")

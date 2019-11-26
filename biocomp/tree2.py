@@ -239,15 +239,15 @@ def select(population, fitnesses):
 
 
 def main():
-    features, labels, *_ = datasets.split(datasets.load_dataset_2())
+    features, labels, test_features, test_labels = datasets.split(datasets.load_dataset_2(), 0.8)
     context = CreationContext(
         min_depth=4,
         max_depth=7,
         feature_count=len(features[0]),
         min_const=0,
         max_const=2,
-        mutation_rate=0.003,
-        crossover_rate=0.85,
+        mutation_rate=0.05,
+        crossover_rate=0.05,
     )
     population_size = 100
     population = [Rule.generate(context) for _ in range(population_size)]
@@ -259,11 +259,30 @@ def main():
         best = copy(population[fitnesses.index(best_fitness)])
         mean = sum(fitnesses) / len(fitnesses)
 
-        state = f'Generation: {generation:3} \tBest: {best_fitness:.3f} \tMean: {mean:.3f} \tDepth: {best.tree.depth} \tSize: {len(best.tree)} \tSolution: {best}'
-        print(state)
+        test_fitnesses = [p.fitness(features, labels) for p in population]
+        test_best_fitness = max(test_fitnesses)
+        test_best = copy(population[fitnesses.index(test_best_fitness)])
+        test_mean = sum(fitnesses) / len(fitnesses)
+
+        print(f'Generation: {generation:3} \t'
+              f'Best: {best_fitness:.3f} \t'
+              f'Mean: {mean:.3f} \t'
+              f'Depth: {best.tree.depth} \t'
+              f'Size: {len(best.tree)} \t'
+              f'Test Best: {test_best_fitness:.3f} \t'
+              f'Solution: {best}')
 
         with open(logfile, 'a') as f:
-            f.write(state + '\n')
+            time = str(datetime.now()).split('.')[0].replace(' ', '.')
+            f.write(f'generation:{generation} '
+                    f'time:{time} '
+                    f'train_fitness_best:{best_fitness} '
+                    f'train_fitness_mean:{mean} '
+                    f'test_fitness_best:{test_best_fitness} '
+                    f'test_fitness_mean:{test_mean}'
+                    f'train_best:{str(best).replace(" ", "")} '
+                    f'test_best:{str(test_best).replace(" ", "")}'
+                    f'\n')
 
         population = [select(population, fitnesses) for _ in range(population_size)]
         population = [m.crossover(d, context) for m, d in zip(population, reversed(population))]
