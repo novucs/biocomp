@@ -279,7 +279,7 @@ def main():
                     f'train_fitness_best:{best_fitness} '
                     f'train_fitness_mean:{mean} '
                     f'test_fitness_best:{test_best_fitness} '
-                    f'test_fitness_mean:{test_mean}'
+                    f'test_fitness_mean:{test_mean} '
                     f'train_best:{str(best).replace(" ", "")} '
                     f'test_best:{str(test_best).replace(" ", "")}'
                     f'\n')
