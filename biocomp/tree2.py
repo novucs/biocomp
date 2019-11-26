@@ -14,6 +14,11 @@ OPERATORS = [
     '%',
 ]
 
+EVALUATIONS = [
+    '>',
+    '<',
+]
+
 
 @dataclass
 class CreationContext:
@@ -133,67 +138,95 @@ class Tree:
         yield self
 
 
-def mutate(tree, context):
-    target = copy(tree)
+class Rule:
+    def __init__(self, tree, evaluation, point):
+        self.tree = tree
+        self.evaluation = evaluation
+        self.point = point
 
-    for subtree in iter(target):
-        if not subtree.is_parent:
-            continue
+    @staticmethod
+    def generate(context):
+        tree = random.choice((context.grow, context.full))()
+        evaluation = random.choice(EVALUATIONS)
+        point = random.uniform(context.min_const, context.max_const)
+        return Rule(tree, evaluation, point)
+
+    def mutate(self, context):
+        target = copy(self)
 
         if random.random() < context.mutation_rate:
-            subtree.operator = random.choice(OPERATORS)
+            target.evaluation = random.choice(EVALUATIONS)
 
         if random.random() < context.mutation_rate:
-            subtree.left = context.grow(target.depth - subtree.depth + 1)
+            target.point = random.uniform(context.min_const, context.max_const)
 
-        if random.random() < context.mutation_rate:
-            subtree.right = context.grow(target.depth - subtree.depth + 1)
+        for subtree in iter(target.tree):
+            if not subtree.is_parent:
+                continue
 
-        if random.random() < context.mutation_rate:
-            subtree.left, subtree.right = subtree.right, subtree.left
+            if random.random() < context.mutation_rate:
+                subtree.operator = random.choice(OPERATORS)
 
-    return target
+            if random.random() < context.mutation_rate:
+                subtree.left = context.grow(target.tree.depth - subtree.depth + 1)
 
+            if random.random() < context.mutation_rate:
+                subtree.right = context.grow(target.tree.depth - subtree.depth + 1)
 
-def crossover(mum: Tree, dad: Tree, context: CreationContext):
-    offspring = copy(mum)
+            if random.random() < context.mutation_rate:
+                subtree.left, subtree.right = subtree.right, subtree.left
 
-    if random.random() >= context.crossover_rate:
-        return offspring
+        return target
 
-    node_to_replace, replace_node_func = random.choice(list(itertools.chain(*(
-        ((m.left, m.set_left), (m.right, m.set_right))
-        for m in iter(offspring)
-        if m.is_parent
-    ))))
+    def crossover(self, other, context):
+        tree = copy(self.tree)
 
-    depth = offspring.depth - node_to_replace.depth
+        if random.random() >= context.crossover_rate:
+            return Rule(tree, self.evaluation, self.point)
 
-    replacement = random.choice(list(itertools.chain(*(
-        (n for n in (d.left, d.right) if context.min_depth <= n.depth + depth <= context.max_depth)
-        for d in iter(copy(dad))
-        if d.is_parent
-    ))))
+        node_to_replace, replace_node_func = random.choice(list(itertools.chain(*(
+            ((m.left, m.set_left), (m.right, m.set_right))
+            for m in iter(tree)
+            if m.is_parent
+        ))))
 
-    replace_node_func(replacement)
+        depth = tree.depth - node_to_replace.depth
 
-    if offspring.depth < context.min_depth:
-        print('whoops')
+        replacement = random.choice(list(itertools.chain(*(
+            (n for n in (d.left, d.right) if context.min_depth <= n.depth + depth <= context.max_depth)
+            for d in iter(copy(other.tree))
+            if d.is_parent
+        ))))
 
-    return offspring
+        replace_node_func(replacement)
 
+        return Rule(tree, self.evaluation, self.point)
 
-def evaluate(root: Tree, features):
-    return root.evaluate(features) < .5
+    def evaluate(self, features):
+        value = self.tree.evaluate(features)
 
+        if self.evaluation == '<':
+            return value < self.point
 
-def fitness(root: Tree, features, labels):
-    correct = 0
-    for f, l in zip(features, labels):
-        if evaluate(root, f) == l:
-            correct += 1
-    generalisation = 1 / len(root)
-    return (correct + generalisation) / len(features)
+        if self.evaluation == '>':
+            return value > self.point
+
+    def fitness(self, features, labels):
+        correct = 0
+        for f, l in zip(features, labels):
+            if self.evaluate(f) == l:
+                correct += 1
+        generalisation = 1 / len(self.tree)
+        return (correct + generalisation) / len(features)
+
+    def compress(self):
+        return Rule(self.tree.compress(), self.evaluation, self.point)
+
+    def __copy__(self):
+        return Rule(copy(self.tree), self.evaluation, self.point)
+
+    def __str__(self):
+        return f'{self.tree} {self.evaluation} {self.point}'
 
 
 def select(population, fitnesses):
@@ -209,7 +242,7 @@ def main():
     features, labels, *_ = datasets.split(datasets.load_dataset_2())
     context = CreationContext(
         min_depth=4,
-        max_depth=9,
+        max_depth=7,
         feature_count=len(features[0]),
         min_const=0,
         max_const=2,
@@ -217,33 +250,33 @@ def main():
         crossover_rate=0.85,
     )
     population_size = 100
-    population = [create() for create in random.choices((context.grow, context.full), k=population_size)]
+    population = [Rule.generate(context) for _ in range(population_size)]
     logfile = f'logs/{datetime.now()}.log'
 
-    for generation in range(5000):
-        fitnesses = [fitness(p, features, labels) for p in population]
+    for generation in range(1000):
+        fitnesses = [p.fitness(features, labels) for p in population]
         best_fitness = max(fitnesses)
         best = copy(population[fitnesses.index(best_fitness)])
         mean = sum(fitnesses) / len(fitnesses)
 
-        state = f'Generation: {generation:3} \tBest: {best_fitness:.3f} \tMean: {mean:.3f} \tDepth: {best.depth} \tSize: {len(best)} \tSolution: {best}'
+        state = f'Generation: {generation:3} \tBest: {best_fitness:.3f} \tMean: {mean:.3f} \tDepth: {best.tree.depth} \tSize: {len(best.tree)} \tSolution: {best}'
         print(state)
 
         with open(logfile, 'a') as f:
             f.write(state + '\n')
 
         population = [select(population, fitnesses) for _ in range(population_size)]
-        population = [crossover(m, d, context) for m, d in zip(population, reversed(population))]
-        population = [mutate(p, context) for p in population]
+        population = [m.crossover(d, context) for m, d in zip(population, reversed(population))]
+        population = [p.mutate(context) for p in population]
         population[-1] = best
 
         # compress
         for i in range(population_size):
             compressed = population[i].compress()
-            if compressed.depth >= context.min_depth:
+            if compressed.tree.depth >= context.min_depth:
                 population[i] = compressed
 
 
 if __name__ == '__main__':
-    for _ in range(30):
+    for _ in range(10):
         main()
