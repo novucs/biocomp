@@ -1,3 +1,4 @@
+import itertools
 import random
 from copy import copy
 from dataclasses import dataclass
@@ -76,6 +77,12 @@ class Tree:
             return Tree(self.operator, self.left.compress(), self.right.compress())
         return Tree(self.operator, self.left, self.right)
 
+    def set_left(self, left):
+        self.left = left
+
+    def set_right(self, right):
+        self.right = right
+
     @property
     def is_parent(self):
         return isinstance(self.right, Tree) and isinstance(self.left, Tree)
@@ -151,43 +158,26 @@ def mutate(tree, context):
 
 
 def crossover(mum: Tree, dad: Tree, context: CreationContext):
-    if random.random() >= context.crossover_rate:
-        return copy(mum)
-
-    dad = copy(dad)
     offspring = copy(mum)
-    offspring_depth = offspring.depth
-    inverse_size = 1 / (len(dad) + len(mum))
 
-    for m in iter(offspring):
-        if not m.is_parent:
-            continue
+    if random.random() >= context.crossover_rate:
+        return offspring
 
-        ml_depth = offspring_depth - m.left.depth
-        mr_depth = offspring_depth - m.right.depth
+    node_to_replace, replace_node_func = random.choice(list(itertools.chain(*(
+        ((m.left, m.set_left), (m.right, m.set_right))
+        for m in iter(offspring)
+        if m.is_parent
+    ))))
 
-        for d in iter(dad):
-            if not d.is_parent:
-                continue
+    depth = offspring.depth - node_to_replace.depth
 
-            dl_depth = d.left.depth
-            dr_depth = d.right.depth
+    replacement = random.choice(list(itertools.chain(*(
+        (n for n in (d.left, d.right) if n.depth + depth <= context.max_depth)
+        for d in iter(copy(dad))
+        if d.is_parent
+    ))))
 
-            if dl_depth + ml_depth < context.max_depth and random.random() < inverse_size:
-                m.left = d.left
-                return offspring
-
-            if dl_depth + mr_depth < context.max_depth and random.random() < inverse_size:
-                m.right = d.left
-                return offspring
-
-            if dr_depth + ml_depth < context.max_depth and random.random() < inverse_size:
-                m.left = d.right
-                return offspring
-
-            if dr_depth + mr_depth < context.max_depth and random.random() < inverse_size:
-                m.right = d.right
-                return offspring
+    replace_node_func(replacement)
 
     return offspring
 
