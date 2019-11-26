@@ -17,7 +17,6 @@ OPERATORS = [
 
 @dataclass
 class CreationContext:
-    depth: int
     min_depth: int
     max_depth: int
     feature_count: int
@@ -31,6 +30,24 @@ class CreationContext:
 
     def random_constant(self):
         return random.randint(self.min_const, self.max_const)
+
+    def random_leaf(self):
+        return random.choice((
+            Tree('feature', self.random_feature(), None),
+            Tree('constant', self.random_constant(), None),
+        ))
+
+    def grow(self, depth=0):
+        depth += 1
+        if depth < self.min_depth or depth < self.max_depth and random.choice((True, False)):
+            return Tree(random.choice(OPERATORS), self.grow(depth), self.grow(depth))
+        return self.random_leaf()
+
+    def full(self, depth=0):
+        depth += 1
+        if depth < self.max_depth:
+            return Tree(random.choice(OPERATORS), self.full(depth), self.full(depth))
+        return self.random_leaf()
 
 
 class Tree:
@@ -62,13 +79,13 @@ class Tree:
             try:
                 return left / right
             except ArithmeticError:
-                return 0
+                return 1
 
         if self.operator == '%':
             try:
                 return left % right
             except ArithmeticError:
-                return 0
+                return 1
 
     def compress(self):
         if self.is_parent:
@@ -116,43 +133,24 @@ class Tree:
         yield self
 
 
-def grow(context):
-    context.depth += 1
-
-    if context.depth < context.min_depth or (context.depth < context.max_depth and random.choice((True, False))):
-        operator = random.choice(OPERATORS)
-        return Tree(operator, grow(copy(context)), grow(copy(context)))
-
-    if random.choice((True, False)):
-        return Tree('feature', context.random_feature(), None)
-
-    return Tree('constant', context.random_constant(), None)
-
-
 def mutate(tree, context):
     target = copy(tree)
+
     for subtree in iter(target):
         if not subtree.is_parent:
-            if random.random() < context.mutation_rate:
-                subtree.operator = random.choice(('feature', 'constant'))
-                if subtree.operator == 'feature':
-                    subtree.left = context.random_feature()
-                if subtree.operator == 'constant':
-                    subtree.left = context.random_constant()
             continue
 
         if random.random() < context.mutation_rate:
             subtree.operator = random.choice(OPERATORS)
 
-        elif random.random() < context.mutation_rate:
-            inner_context = copy(context)
-            inner_context.depth = target.depth - subtree.depth + 1
-            subtree.left = grow(inner_context)
+        if random.random() < context.mutation_rate:
+            subtree.left = context.grow(target.depth - subtree.depth + 1)
 
-        elif random.random() < context.mutation_rate:
-            inner_context = copy(context)
-            inner_context.depth = target.depth - subtree.depth + 1
-            subtree.right = grow(inner_context)
+        if random.random() < context.mutation_rate:
+            subtree.right = context.grow(target.depth - subtree.depth + 1)
+
+        if random.random() < context.mutation_rate:
+            subtree.left, subtree.right = subtree.right, subtree.left
 
     return target
 
@@ -172,12 +170,15 @@ def crossover(mum: Tree, dad: Tree, context: CreationContext):
     depth = offspring.depth - node_to_replace.depth
 
     replacement = random.choice(list(itertools.chain(*(
-        (n for n in (d.left, d.right) if n.depth + depth <= context.max_depth)
+        (n for n in (d.left, d.right) if context.min_depth <= n.depth + depth <= context.max_depth)
         for d in iter(copy(dad))
         if d.is_parent
     ))))
 
     replace_node_func(replacement)
+
+    if offspring.depth < context.min_depth:
+        print('whoops')
 
     return offspring
 
@@ -207,9 +208,8 @@ def select(population, fitnesses):
 def main():
     features, labels, *_ = datasets.split(datasets.load_dataset_2())
     context = CreationContext(
-        depth=0,
-        min_depth=5,
-        max_depth=16,
+        min_depth=4,
+        max_depth=9,
         feature_count=len(features[0]),
         min_const=0,
         max_const=2,
@@ -217,7 +217,7 @@ def main():
         crossover_rate=0.85,
     )
     population_size = 100
-    population = [grow(copy(context)) for _ in range(population_size)]
+    population = [create() for create in random.choices((context.grow, context.full), k=population_size)]
     logfile = f'logs/{datetime.now()}.log'
 
     for generation in range(5000):
@@ -233,11 +233,17 @@ def main():
             f.write(state + '\n')
 
         population = [select(population, fitnesses) for _ in range(population_size)]
-        population = [crossover(m, d, copy(context)) for m, d in zip(population, reversed(population))]
-        population = [mutate(p, copy(context)).compress() for p in population]
-        population[-1] = best.compress()
+        population = [crossover(m, d, context) for m, d in zip(population, reversed(population))]
+        population = [mutate(p, context) for p in population]
+        population[-1] = best
+
+        # compress
+        for i in range(population_size):
+            compressed = population[i].compress()
+            if compressed.depth >= context.min_depth:
+                population[i] = compressed
 
 
 if __name__ == '__main__':
-    for i in range(30):
+    for _ in range(30):
         main()
