@@ -191,7 +191,7 @@ def plot_parameter_sweep(title, logs):
     dz2 = data2.flatten()
 
     for k in range(len(xpos)):
-        pl1 = ax.bar3d(xpos[k], ypos[k], zpos[k], dx[k], dy[k], dz1[k], color='C1', alpha=.8)
+        pl1 = ax.bar3d(xpos[k], ypos[k], zpos[k], dx[k], dy[k], dz1[k], color='C1', alpha=0.8)
         pl2 = ax.bar3d(xpos[k], ypos[k], zpos[k] + dz1[k], dx[k], dy[k], dz2[k] - dz1[k], color='C0', alpha=0.8)
         pl1._sort_zpos = 1 / (k + 1)
         pl2._sort_zpos = 1 / (k + 1)
