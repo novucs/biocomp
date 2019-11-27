@@ -18,7 +18,7 @@ private:
     Dataset test = Dataset();
     int rule_count = 60;
     int population_size = 100;
-    double crossover_chance = 0.5;
+    double crossover_rate = 0.5;
     double mutation_rate = 0.003;
     bool use_tournament_selection = true;  // false uses roulette wheel selection
     double selection_switch_threshold = 0.1;
@@ -39,10 +39,11 @@ private:
     std::mutex mutex;
     bool running = true;
     bool load_population_from_file = false;
-    int max_generation_count = 1000;
+    int max_generation_count = 500;
+    bool save_rules = false;
 
 public:
-    GeneticAlgorithm(std::string dataset, std::vector<double> splits);
+    GeneticAlgorithm(std::string dataset, std::vector<double> splits, double crossover_rate, double mutation_rate);
 
     bool should_mutate();
 

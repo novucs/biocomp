@@ -293,8 +293,8 @@ def run_experiment(context):
 
 
 def main():
-    mutations = [0.0001, 0.001, 0.01, 0.05]
-    crossovers = [0.1, 0.25, 0.5, 0.75, 0.9]
+    mutations = [0.0001, 0.001, 0.01, 0.1]
+    crossovers = [0.0, 0.25, 0.5, 0.75, 1.0]
 
     for mutation_rate in mutations:
         for crossover_rate in crossovers:

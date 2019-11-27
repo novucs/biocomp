@@ -11,7 +11,9 @@
 #include "Individual.h"
 #include "Random.h"
 
-GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> splits) : dataset_filename(dataset) {
+GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> splits, double crossover_rate,
+                                   double mutation_rate) : dataset_filename(dataset), crossover_rate(crossover_rate),
+                                                           mutation_rate(mutation_rate) {
     auto datasets = Dataset(dataset).split(splits);
     train = datasets.at(0);
     test = datasets.size() < 2 ? train : datasets.at(datasets.size() - 1);
@@ -34,7 +36,7 @@ GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> spli
     file << "\tdataset:" << dataset_filename << std::endl;
     file << "\trule_count:" << rule_count << std::endl;
     file << "\tpopulation_size:" << population_size << std::endl;
-    file << "\tcrossover_chance:" << crossover_chance << std::endl;
+    file << "\tcrossover_rate:" << crossover_rate << std::endl;
     file << "\tmutation_rate:" << mutation_rate << std::endl;
     file << "\tuse_tournament_selection:" << use_tournament_selection << std::endl;
     file << "\tselection_switch_threshold:" << selection_switch_threshold << std::endl;
@@ -167,7 +169,7 @@ Individual GeneticAlgorithm::select_parent(FitnessAggregate &fitness_aggregate) 
 Individual GeneticAlgorithm::create_offspring(FitnessAggregate &fitness_aggregate) {
     Individual offspring;
 
-    if (rng() < crossover_chance) {
+    if (rng() < crossover_rate) {
         Individual mum = select_parent(fitness_aggregate);
         Individual dad = select_parent(fitness_aggregate);
         offspring = mum.crossover(dad).mutate();
@@ -343,9 +345,11 @@ void GeneticAlgorithm::log() {
     file << "test_fitness_median:" << test_fitness.median << " ";
     file << "test_fitness_third_quartile:" << test_fitness.third_quartile << " ";
 
-    file << "best_train_rules:" << overall_best.dump() << " ";
-    file << "best_cross_validation_rules:" << cross_validation_fitness.best_individual.dump() << " ";
-    file << "best_test_rules:" << test_fitness.best_individual.dump() << std::endl;
+    if (save_rules) {
+        file << "best_train_rules:" << overall_best.dump() << " ";
+        file << "best_cross_validation_rules:" << cross_validation_fitness.best_individual.dump() << " ";
+        file << "best_test_rules:" << test_fitness.best_individual.dump() << std::endl;
+    }
     file.close();
 }
 
