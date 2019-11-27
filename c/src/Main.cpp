@@ -22,12 +22,8 @@ int main(int argc, char *argv[]) {
     }
 
     for (int i = 0; i < 5; i++) {
-        for (double mutation_rate : {0.0001, 0.001, 0.01, 0.1}) {
-            for (double crossover_rate : {0.0, 0.25, 0.5, 0.75, 1.0}) {
-                GeneticAlgorithm ga = GeneticAlgorithm(dataset, splits, crossover_rate, mutation_rate);
-                ga.run();
-            }
-        }
+        GeneticAlgorithm ga = GeneticAlgorithm(dataset, splits, 0.0, 0.0001);
+        ga.run();
     }
 
     return 0;

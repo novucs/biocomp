@@ -1,6 +1,13 @@
+import re
+
 import matplotlib.pyplot as plt
-import numpy as np
+from matplotlib.ticker import (
+    LinearLocator,
+    FormatStrFormatter,
+)
 from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
+from matplotlib import cm
 
 
 class Log:
@@ -112,9 +119,7 @@ def plot_fitness_area(generation_count, logs, key, line_args=None, fill_args=Non
             if generation == generation_count:
                 break
 
-            rule_count = float(entry['rule_count'])
-            base_fitness = float(log.settings['rule_count']) - rule_count
-            fitness = (float(entry[key]) * base_fitness) / float(log.settings['rule_count'])
+            fitness = rule_accounted_fitness(log, entry, key)
             plotter.update(fitness)
 
         reached = generation
@@ -138,6 +143,13 @@ def plot_fitness_area(generation_count, logs, key, line_args=None, fill_args=Non
     axes.set_xlim([0, generation_count])
 
 
+def rule_accounted_fitness(log, entry, key):
+    rule_count = float(entry['rule_count'])
+    base_fitness = float(log.settings['rule_count']) - rule_count
+    fitness = (float(entry[key]) * base_fitness) / float(log.settings['rule_count'])
+    return fitness
+
+
 def plot_parameter_sweep(title, logs):
     crossovers = sorted({float(l.settings['crossover_rate']) for l in logs})
     mutations = sorted({float(l.settings['mutation_rate']) for l in logs})
@@ -147,12 +159,11 @@ def plot_parameter_sweep(title, logs):
     zs1 = [[0. for _ in range(len(crossovers))] for _ in range(len(mutations))]
     zs2 = [[0. for _ in range(len(crossovers))] for _ in range(len(mutations))]
 
-    power = 1
     values = [(
         crossovers.index(float(log.settings['crossover_rate'])),
         mutations.index(float(log.settings['mutation_rate'])),
-        (sum(float(entry['train_fitness_mean']) for entry in log.entries) / len(log.entries)) ** power,
-        (sum(float(entry['train_fitness_best']) for entry in log.entries) / len(log.entries)) ** power,
+        (sum(rule_accounted_fitness(log, entry, 'train_fitness_mean') for entry in log.entries) / len(log.entries)),
+        (sum(rule_accounted_fitness(log, entry, 'train_fitness_best') for entry in log.entries) / len(log.entries)),
     ) for log in logs]
 
     for x, y, z1, z2 in values:
@@ -187,8 +198,8 @@ def plot_parameter_sweep(title, logs):
     dz2 = data2.flatten()
 
     for k in range(len(xpos)):
-        ax.bar3d(xpos[k], ypos[k], zpos[k], dx[k], dy[k], dz1[k], color='C1', alpha=1)
-        ax.bar3d(xpos[k], ypos[k], zpos[k] + dz1[k], dx[k], dy[k], dz2[k] - dz1[k], color='C0', alpha=1)
+        ax.bar3d(xpos[k], ypos[k], zpos[k], dx[k], dy[k], dz1[k], color='C1', alpha=.8)
+        ax.bar3d(xpos[k], ypos[k], zpos[k] + dz1[k], dx[k], dy[k], dz2[k] - dz1[k], color='C0', alpha=0.8)
 
     ax.set_zlim([0, 1])
 
