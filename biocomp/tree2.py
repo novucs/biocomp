@@ -164,16 +164,18 @@ class Rule:
             if not subtree.is_parent:
                 continue
 
-            if random.random() < context.mutation_rate:
+            depth = subtree.depth
+
+            if random.random() * (1 / depth) < context.mutation_rate:
                 subtree.operator = random.choice(OPERATORS)
 
-            if random.random() < context.mutation_rate:
+            if random.random() * (1 / depth) < context.mutation_rate:
                 subtree.left = context.grow(target.tree.depth - subtree.depth + 1)
 
-            if random.random() < context.mutation_rate:
+            if random.random() * (1 / depth) < context.mutation_rate:
                 subtree.right = context.grow(target.tree.depth - subtree.depth + 1)
 
-            if random.random() < context.mutation_rate:
+            if random.random() * (1 / depth) < context.mutation_rate:
                 subtree.left, subtree.right = subtree.right, subtree.left
 
         return target
@@ -238,22 +240,15 @@ def select(population, fitnesses):
     return winner
 
 
-def main():
+def run_experiment(context):
     features, labels, test_features, test_labels = datasets.split(datasets.load_dataset_2(), 0.8)
-    context = CreationContext(
-        min_depth=4,
-        max_depth=7,
-        feature_count=len(features[0]),
-        min_const=0,
-        max_const=2,
-        mutation_rate=0.05,
-        crossover_rate=0.05,
-    )
     population_size = 100
     population = [Rule.generate(context) for _ in range(population_size)]
     logfile = f'logs/{datetime.now()}.log'
+    with open(logfile, 'a') as f:
+        f.write(str(context) + '\n')
 
-    for generation in range(1000):
+    for generation in range(500):
         fitnesses = [p.fitness(features, labels) for p in population]
         best_fitness = max(fitnesses)
         best = copy(population[fitnesses.index(best_fitness)])
@@ -264,13 +259,14 @@ def main():
         test_best = copy(population[fitnesses.index(test_best_fitness)])
         test_mean = sum(fitnesses) / len(fitnesses)
 
-        print(f'Generation: {generation:3} \t'
-              f'Best: {best_fitness:.3f} \t'
-              f'Mean: {mean:.3f} \t'
-              f'Depth: {best.tree.depth} \t'
-              f'Size: {len(best.tree)} \t'
-              f'Test Best: {test_best_fitness:.3f} \t'
-              f'Solution: {best}')
+        if generation % 25 == 0:
+            print(f'Generation: {generation:3} \t'
+                  f'Best: {best_fitness:.3f} \t'
+                  f'Mean: {mean:.3f} \t'
+                  f'Depth: {best.tree.depth} \t'
+                  f'Size: {len(best.tree)} \t'
+                  f'Test Best: {test_best_fitness:.3f} \t'
+                  f'Solution: {best}')
 
         with open(logfile, 'a') as f:
             time = str(datetime.now()).split('.')[0].replace(' ', '.')
@@ -296,6 +292,26 @@ def main():
                 population[i] = compressed
 
 
+def main():
+    mutations = [0.0001, 0.001, 0.01, 0.05]
+    crossovers = [0.1, 0.25, 0.5, 0.75, 0.9]
+
+    for mutation_rate in mutations:
+        for crossover_rate in crossovers:
+            context = CreationContext(
+                min_depth=4,
+                max_depth=7,
+                feature_count=6,
+                min_const=0,
+                max_const=2,
+                mutation_rate=mutation_rate,
+                crossover_rate=crossover_rate,
+            )
+
+            for i in range(5):
+                print(context)
+                run_experiment(context)
+
+
 if __name__ == '__main__':
-    for _ in range(10):
-        main()
+    main()
