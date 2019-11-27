@@ -1,13 +1,6 @@
-import re
-
 import matplotlib.pyplot as plt
-from matplotlib.ticker import (
-    LinearLocator,
-    FormatStrFormatter,
-)
-from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
-from matplotlib import cm
+from mpl_toolkits.mplot3d import Axes3D
 
 
 class Log:
@@ -122,7 +115,6 @@ def plot_fitness_area(generation_count, logs, key, line_args=None, fill_args=Non
             rule_count = float(entry['rule_count'])
             base_fitness = float(log.settings['rule_count']) - rule_count
             fitness = (float(entry[key]) * base_fitness) / float(log.settings['rule_count'])
-            # fitness = float(entry[key])
             plotter.update(fitness)
 
         reached = generation
@@ -146,38 +138,41 @@ def plot_fitness_area(generation_count, logs, key, line_args=None, fill_args=Non
     axes.set_xlim([0, generation_count])
 
 
-def plot_parameter_sweep(logs):
+def plot_parameter_sweep(title, logs):
     crossovers = sorted({float(l.settings['crossover_rate']) for l in logs})
     mutations = sorted({float(l.settings['mutation_rate']) for l in logs})
 
     xs = crossovers
     ys = mutations
-    zs = [[0. for _ in range(len(crossovers))] for _ in range(len(mutations))]
+    zs1 = [[0. for _ in range(len(crossovers))] for _ in range(len(mutations))]
+    zs2 = [[0. for _ in range(len(crossovers))] for _ in range(len(mutations))]
 
-    values = [
-        (
-            crossovers.index(float(log.settings['crossover_rate'])),
-            mutations.index(float(log.settings['mutation_rate'])),
-            # sum(float(entry['train_fitness_best']) for entry in log.entries) / len(log.entries)
-            max(float(entry['train_fitness_mean']) for entry in log.entries) ** 5
-        )
-        for log in logs
-    ]
+    power = 1
+    values = [(
+        crossovers.index(float(log.settings['crossover_rate'])),
+        mutations.index(float(log.settings['mutation_rate'])),
+        (sum(float(entry['train_fitness_mean']) for entry in log.entries) / len(log.entries)) ** power,
+        (sum(float(entry['train_fitness_best']) for entry in log.entries) / len(log.entries)) ** power,
+    ) for log in logs]
 
-    for x, y, z in values:
-        zs[y][x] += z / sum(1 for i, j, _ in values if i == x and j == y)
+    for x, y, z1, z2 in values:
+        sample_count = sum(1 for i, j, *_ in values if i == x and j == y)
+        zs1[y][x] += z1 / sample_count
+        zs2[y][x] += z2 / sample_count
 
-    zs = list(reversed(zs))
-    ys = list(reversed(ys))
-    column_names = xs
-    row_names = ys
-    data = np.array(zs)
+    # # Reverse order of columns to get a different display angle
+    # ys = list(reversed(ys))
+    # zs1 = list(reversed(zs1))
+    # zs2 = list(reversed(zs2))
+
+    data1 = np.array(zs1)
+    data2 = np.array(zs2)
 
     fig = plt.figure()
     ax: Axes3D = fig.gca(projection='3d')
 
-    lx = len(data[0])  # Work out matrix dimensions
-    ly = len(data[:, 0])
+    lx = len(data1[0])  # Work out matrix dimensions
+    ly = len(data1[:, 0])
     xpos = np.arange(0, lx, 1)  # Set up a mesh of positions
     ypos = np.arange(0, ly, 1)
     xpos, ypos = np.meshgrid(xpos + 0.25, ypos + 0.25)
@@ -188,58 +183,31 @@ def plot_parameter_sweep(logs):
 
     dx = 0.5 * np.ones_like(zpos)
     dy = dx.copy()
-    dz = data.flatten()
+    dz1 = data1.flatten()
+    dz2 = data2.flatten()
 
-    cs = ['r', 'g', 'b', 'y', 'c'] * ly
-    ax.bar3d(
-        xpos, ypos,
-        zpos,
-        # np.array(zs).flatten(),
-        dx, dy, dz,
-        color=cs,
-        # zdir='y',
-        alpha=0.8,
-    )
+    for k in range(len(xpos)):
+        ax.bar3d(xpos[k], ypos[k], zpos[k], dx[k], dy[k], dz1[k], color='C1', alpha=1)
+        ax.bar3d(xpos[k], ypos[k], zpos[k] + dz1[k], dx[k], dy[k], dz2[k] - dz1[k], color='C0', alpha=1)
 
-    # ax.set_zlim([min(min(k) for k in data), max(max(k) for k in data)])
     ax.set_zlim([0, 1])
 
-    ax.set_xticks([i + .5 for i in range(len(column_names))])
-    ax.set_xticklabels(column_names)
+    ax.set_xticks([i + .5 for i in range(len(xs))])
+    ax.set_xticklabels(xs)
 
-    ax.set_yticks([i + .5 for i in range(len(row_names))])
-    ax.set_yticklabels(row_names)
+    ax.set_yticks([i + .5 for i in range(len(ys))])
+    ax.set_yticklabels(ys)
 
-    ax.set_xlabel('Crossover')
-    ax.set_ylabel('Mutation')
+    ax.set_xlabel('Crossover Rate')
+    ax.set_ylabel('Mutation Rate')
     ax.set_zlabel('Fitness')
 
-    plt.show()
+    best_proxy = plt.Rectangle((0, 0), 1, 1, fc="C0")
+    mean_proxy = plt.Rectangle((0, 0), 1, 1, fc="C1")
+    ax.legend([best_proxy, mean_proxy], ['best fitness', 'mean fitness'], loc='lower left')
+    plt.title(title)
 
-    # def fun(x, y):
-    #     return np.array(zs)
-    #
-    # fig = plt.figure()
-    # ax: Axes3D = fig.gca(projection='3d')
-    #
-    # xs = np.array(xs)
-    # ys = np.array(ys)
-    # xs, ys = np.meshgrid(xs, ys)
-    # # zs = np.array(zs)
-    # Z = np.array(fun(np.ravel(xs), np.ravel(ys)))
-    # Z = Z.reshape(xs.shape)
-    #
-    # surf = ax.plot_surface(xs, ys, Z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-    #
-    # # Customize the z axis.
-    # # ax.set_zlim(-1.01, 1.01)
-    # # ax.zaxis.set_major_locator(LinearLocator(10))
-    # # ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
-    #
-    # # Add a color bar which maps values to colors.
-    # fig.colorbar(surf, shrink=0.5, aspect=5)
-    #
-    # plt.show()
+    plt.show()
 
 
 def main():
@@ -855,8 +823,9 @@ def main():
     #     plt.savefig(f'graphs/{name}.png')
     #     plt.show()
 
-    plot_parameter_sweep(experiments['data1_parameter_sweeps'])
-    plot_parameter_sweep(experiments['data2_gp_parameter_sweeps'])
+    plot_parameter_sweep('data1 - LCS parameter sweep',
+                         experiments['data1_parameter_sweeps'])
+    plot_parameter_sweep('data2 - genetic programmer parameter sweep', experiments['data2_gp_parameter_sweeps'])
 
 
 if __name__ == '__main__':
