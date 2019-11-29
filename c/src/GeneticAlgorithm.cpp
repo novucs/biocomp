@@ -348,8 +348,9 @@ void GeneticAlgorithm::log() {
     if (save_rules) {
         file << "best_train_rules:" << overall_best.dump() << " ";
         file << "best_cross_validation_rules:" << cross_validation_fitness.best_individual.dump() << " ";
-        file << "best_test_rules:" << test_fitness.best_individual.dump() << std::endl;
+        file << "best_test_rules:" << test_fitness.best_individual.dump() << " ";
     }
+    file << std::endl;
     file.close();
 }
 

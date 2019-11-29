@@ -117,13 +117,30 @@ def check_against_digital_data4():
               ''.join(map(str, map(int, features))), int(label))
 
 
+
+def check_data2_tree():
+    solution = '(((f1+f4)-((f5+f0)-(f2-(1+f3))))%2)<0.1'
+    tx, ty = datasets.split(datasets.load_dataset_2())
+    correct_count = 0
+
+    for features, labels in zip(tx, ty):
+        prediction = eval(solution, {f'f{i}': v for i, v in enumerate(features)})
+        if prediction == labels:
+            correct_count += 1
+        else:
+            print('Could not predict: ', ''.join(map(str, map(int, features))))
+
+    print(f'Predicted {correct_count}/{len(tx)} correct for data2')
+
+
 def main():
     print_solution()
     # print()
-    # check_against_data2()
+    check_against_data2()
     # print()
     # print_hard_coded_rules()
-    check_against_digital_data4()
+    # check_against_digital_data4()
+    # check_data2_tree()
 
 
 if __name__ == '__main__':

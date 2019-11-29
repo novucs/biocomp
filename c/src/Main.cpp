@@ -21,8 +21,8 @@ int main(int argc, char *argv[]) {
         splits = {train, cross_validation, test};
     }
 
-    for (int i = 0; i < 5; i++) {
-        GeneticAlgorithm ga = GeneticAlgorithm(dataset, splits, 0.0, 0.0001);
+    for (int i = 0; i < 10; i++) {
+        GeneticAlgorithm ga = GeneticAlgorithm(dataset, splits, 0.85, 0.003);
         ga.run();
     }
 

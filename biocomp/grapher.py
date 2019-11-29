@@ -17,7 +17,12 @@ def load_logfiles(names):
         with open(name, "r") as f:
             lines = f.readlines()
 
-        settings = dict(l.strip().split(':', maxsplit=1) for l in lines if l.startswith('\t'))
+        settings = {
+            l.strip().split(':')[0]: l.strip().split(':', maxsplit=1)[1]
+            for l in lines
+            if l.count(':') == 1
+        }
+
         entries = [{
             v.split(':')[0]: v.split(":", maxsplit=1)[1]
             for v in l.split(" ")
