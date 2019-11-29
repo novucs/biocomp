@@ -2,12 +2,11 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
-#include <sstream>
 #include <unordered_map>
 #include <atomic>
 #include <cmath>
 #include <stdlib.h>
-#include <stdio.h>
+#include <iomanip>
 #include "Individual.h"
 #include "Random.h"
 
@@ -34,7 +33,7 @@ GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> spli
     file << "================================" << std::endl;
     file << "Run settings:" << std::endl;
     file << "\tdataset:" << dataset_filename << std::endl;
-    file << "\trule_count:" << rule_count << std::endl;
+    file << "\trule_count:" << initial_rule_count << std::endl;
     file << "\tpopulation_size:" << population_size << std::endl;
     file << "\tcrossover_rate:" << crossover_rate << std::endl;
     file << "\tmutation_rate:" << mutation_rate << std::endl;
@@ -42,7 +41,6 @@ GeneticAlgorithm::GeneticAlgorithm(std::string dataset, std::vector<double> spli
     file << "\tselection_switch_threshold:" << selection_switch_threshold << std::endl;
     file << "\tcovered_best_variations:" << covered_best_variations << std::endl;
     file << "\ttournament_size:" << tournament_size << std::endl;
-    file << "\tdistill_inheritance_chance:" << distill_inheritance_chance << std::endl;
     file << "\tcover_chance:" << cover_chance << std::endl;
     file << "\tfitness_threshold:" << fitness_threshold << std::endl;
     file << "================================" << std::endl;
@@ -57,17 +55,14 @@ int GeneticAlgorithm::get_condition_size() {
     return train.features.at(0).size();
 }
 
-int GeneticAlgorithm::get_rule_count() {
-    if (rule_count == 0) {
-        rule_count = std::min((int) train.features.size(), 30);
-    }
-    return rule_count;
+int GeneticAlgorithm::random_rule_count() {
+    return rng() * (double) current_rule_count;
 }
 
 void GeneticAlgorithm::load_population(std::string filename) {
     std::ifstream datafile(filename);
 
-    Individual best = generate_individual(this);
+    Individual best = generate_individual(this, current_rule_count);
     int best_rule_count = std::numeric_limits<int>::max();
     double best_fitness = -1;
 
@@ -91,8 +86,8 @@ void GeneticAlgorithm::load_population(std::string filename) {
         bool good_fitness = std::stod(tags["fitness"]) >= fitness_threshold;
 
         if (same_dataset && solution_rule_count < best_rule_count && good_fitness) {
-            rule_count = best_rule_count = solution_rule_count;
-            best = load_individual(this, tags["rules"]);
+            current_rule_count = best_rule_count = solution_rule_count;
+            best = load_individual(this, tags["rules"], current_rule_count);
             best_fitness = std::stod(tags["fitness"]);
         }
     }
@@ -101,7 +96,7 @@ void GeneticAlgorithm::load_population(std::string filename) {
 
     bool reduce_rule_count = best_fitness >= fitness_threshold;
     if (reduce_rule_count) {
-        rule_count -= 1;
+        current_rule_count -= 1;
         population = generate_reduced_population(best);
     } else if (best_fitness == -1) {
         population = generate_covered_population();
@@ -119,11 +114,7 @@ std::vector<Individual> GeneticAlgorithm::generate_similar_population(Individual
 std::vector<Individual> GeneticAlgorithm::generate_reduced_population(Individual &best) {
     std::vector<Individual> target;
     for (int i = 0; i < population_size; i++) {
-        if (rng() < distill_inheritance_chance) {
-            target.push_back(best.remove_rule());
-        } else {
-            target.push_back(individual_from_samples(this, train));
-        }
+        target.push_back(best.remove_rules(random_rule_count() - 1));
     }
     return target;
 }
@@ -131,7 +122,7 @@ std::vector<Individual> GeneticAlgorithm::generate_reduced_population(Individual
 std::vector<Individual> GeneticAlgorithm::generate_covered_population() {
     std::vector<Individual> target;
     for (int i = 0; i < population_size; i++) {
-        target.push_back(individual_from_samples(this, train));
+        target.push_back(individual_from_samples(this, train, random_rule_count()));
     }
     return target;
 }
@@ -149,7 +140,7 @@ Individual GeneticAlgorithm::roulette_wheel_selection(FitnessAggregate &fitness_
 }
 
 Individual GeneticAlgorithm::tournament_selection(FitnessAggregate &fitness_aggregate) {
-    Individual fittest = generate_individual(this);
+    Individual fittest = generate_individual(this, random_rule_count());
     double fitness = -1;
     for (int i = 0; i < tournament_size; i++) {
         int index = rng() * population_size;
@@ -199,7 +190,7 @@ void GeneticAlgorithm::run() {
             generation += 1;
             train_step();
             if (generation % 50 == 0) {
-                display_test_results();
+                display_results(test_fitness, true);
             }
 
             if (generation >= max_generation_count && max_generation_count > 0) {
@@ -210,12 +201,17 @@ void GeneticAlgorithm::run() {
     }
 }
 
-void GeneticAlgorithm::display_test_results() {
-    printf("Generation: %*d ", 5, generation);
-    printf("\tBest Fitness: %.3f ", test_fitness.best);
-    printf("\tMean Fitness: %.3f ", test_fitness.mean);
-    printf("\tRule Count: %*d ", 3, rule_count);
-    printf("\t<--- Test Set\n");
+void GeneticAlgorithm::display_results(FitnessAggregate &fitness_aggregate, bool test_set) {
+    std::cout << "Generation: " << std::setfill(' ') << std::setw(5) << generation << " \t";
+    std::cout << std::fixed << std::setprecision(3);
+    std::cout << "Best Fitness: " << fitness_aggregate.best << " \t";
+    std::cout << "Mean Fitness: " << fitness_aggregate.mean << " \t";
+    std::cout << "Best Rule Count: " << fitness_aggregate.best_individual.rule_count() << " \t";
+    std::cout << "Rule Count: " << current_rule_count << " \t";
+    if (test_set) {
+        std::cout << "<-- Test Set";
+    }
+    std::cout << std::endl;
 }
 
 void GeneticAlgorithm::train_step() {
@@ -231,11 +227,7 @@ void GeneticAlgorithm::train_step() {
     }
 
     if (generation % 5 == 0) {
-        printf("Generation: %*d ", 5, generation);
-        printf("\tBest Fitness: %.3f ", train_fitness.best);
-        printf("\tMean Fitness: %.3f ", train_fitness.mean);
-        printf("\tRule Count: %*d ", 3, rule_count);
-        printf("\n");
+        display_results(train_fitness, false);
     }
 
     double mean_fitness_difference = std::max(0.0, train_fitness.mean - cross_validation_fitness.mean);
@@ -256,6 +248,11 @@ void GeneticAlgorithm::train_step() {
     for (int i = 0; i < covered_best_variations; i++) {
         new_population.push_back(overall_best.cover(train, wrong_classifications).mutate());
     }
+
+    for (Individual &individual : population) {
+        std::cout << individual.rule_count() << ' ';
+    }
+    std::cout << std::endl;
 
     population = new_population;
 }
@@ -301,11 +298,12 @@ void GeneticAlgorithm::update_fitness() {
 
 bool GeneticAlgorithm::found_new_best() {
     overall_best = overall_best.compress();
-    rule_count = overall_best.rule_count();
-    printf("Found rule in %d generations with rule count of %d\n", generation, rule_count);
+    current_rule_count = overall_best.rule_count();
+    std::cout << "Found rule in " << std::setprecision(4) << generation;
+    std::cout << " generations with rule count of " << current_rule_count << std::endl;
     save_solution();
     overall_best_fitness = -1;
-    rule_count -= 1;
+    current_rule_count -= 1;
     population = generate_reduced_population(overall_best);
     return true;
 }
@@ -325,7 +323,7 @@ void GeneticAlgorithm::save_solution() {
 void GeneticAlgorithm::log() {
     std::ofstream file;
     file.open(log_filename, std::ios::app);
-    file << "rule_count:" << rule_count << " ";
+    file << "rule_count:" << current_rule_count << " ";
     file << "generation:" << generation << " ";
     file << "time:" << current_time() << " ";
 

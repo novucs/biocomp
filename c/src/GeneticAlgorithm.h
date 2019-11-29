@@ -16,15 +16,15 @@ private:
     Dataset train = Dataset();
     Dataset cross_validation = Dataset();
     Dataset test = Dataset();
-    int rule_count = 60;
+    int initial_rule_count = 60;
+    int current_rule_count = initial_rule_count;
     int population_size = 100;
-    double crossover_rate = 0.5;
+    double crossover_rate = 0.0;
     double mutation_rate = 0.003;
     bool use_tournament_selection = true;  // false uses roulette wheel selection
     double selection_switch_threshold = 0.1;
     int covered_best_variations = 5;
     int tournament_size = 5;
-    double distill_inheritance_chance = 0.33;
     std::vector<Individual> population = std::vector<Individual>();
     Individual overall_best = dummy_individual();
     FitnessAggregate train_fitness = FitnessAggregate();
@@ -49,7 +49,7 @@ public:
 
     int get_condition_size();
 
-    int get_rule_count();
+    int random_rule_count();
 
     void load_population(std::string filename);
 
@@ -69,7 +69,7 @@ public:
 
     void run();
 
-    void display_test_results();
+    void display_results(FitnessAggregate &fitness_aggregate, bool test_set);
 
     void train_step();
 

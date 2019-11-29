@@ -21,8 +21,6 @@ public:
 
     double generalisation();
 
-    Rule uniform_crossover(Rule &other);
-
     Rule mutate();
 
     bool matches(std::vector<double> &features);

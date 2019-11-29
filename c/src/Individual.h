@@ -23,10 +23,6 @@ public:
 
     int rule_count();
 
-    Individual uniform_crossover(Individual &other);
-
-    Individual crossover_by_rule(Individual &other);
-
     Individual crossover(Individual &other);
 
     Individual mutate();
@@ -41,6 +37,8 @@ public:
 
     Individual remove_rule();
 
+    Individual remove_rules(int count);
+
     bool is_subsumed(int rule_index);
 
     Individual compress();
@@ -52,11 +50,10 @@ public:
 
 Individual dummy_individual();
 
-Individual generate_individual(GeneticAlgorithm *ga);
+Individual generate_individual(GeneticAlgorithm *ga, int rule_count);
 
-Individual load_individual(GeneticAlgorithm *ga, std::string dump);
+Individual load_individual(GeneticAlgorithm *ga, std::string dump, int rule_count);
 
-Individual
-individual_from_samples(GeneticAlgorithm *ga, Dataset &dataset);
+Individual individual_from_samples(GeneticAlgorithm *ga, Dataset &dataset, int rule_count);
 
 #endif //C_INDIVIDUAL_H

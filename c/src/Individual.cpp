@@ -17,32 +17,20 @@ double Individual::generalisation() {
     for (Rule &rule : rules) {
         generalisation += rule.generalisation();
     }
-    return generalisation == 0 ? 0 : generalisation / (double) rules.size();
+    return generalisation / (double) rules.size();
 }
 
 int Individual::rule_count() {
     return rules.size();
 }
 
-Individual Individual::uniform_crossover(Individual &other) {
+Individual Individual::crossover(Individual &other) {
     std::vector<Rule> new_rules;
     for (int i = 0; i < rules.size(); i++) {
-        new_rules.push_back(rules.at(i).uniform_crossover(other.rules.at(i)));
-    }
-    return Individual(ga, new_rules);
-}
-
-Individual Individual::crossover_by_rule(Individual &other) {
-    std::vector<Rule> new_rules;
-    for (int i = 0; i < rules.size(); i++) {
-        Rule rule = rng() < 0.5 ? rules.at(i) : other.rules.at(i);
+        Rule rule = rng() < 0.5 ? rules.at(i) : other.rules.at(i % other.rules.size());
         new_rules.push_back(rule);
     }
     return Individual(ga, new_rules);
-}
-
-Individual Individual::crossover(Individual &other) {
-    return rng() < 0.5 ? crossover_by_rule(other) : uniform_crossover(other);
 }
 
 Individual Individual::mutate() {
@@ -109,6 +97,14 @@ Individual Individual::remove_rule() {
     return Individual(ga, new_rules);
 }
 
+Individual Individual::remove_rules(int count) {
+    Individual individual(*this);
+    for (int i = 0; i < count; i++) {
+        individual = individual.remove_rule();
+    }
+    return individual;
+}
+
 bool Individual::is_subsumed(int rule_index) {
     for (int i = 0; i < rule_index; i++) {
         if (rules.at(i).subsumes(rules.at(rule_index))) {
@@ -150,7 +146,7 @@ Individual Individual::cover(Dataset &dataset, std::vector<std::vector<int>> &wr
     individual.rules.insert(individual.rules.begin(), rule);
 
     // cover remaining missing rules using random dataset samples
-    int missing_rules = ga->get_rule_count() - individual.rule_count();
+    int missing_rules = rule_count() - individual.rule_count();
     for (int i = 0; i < missing_rules; i++) {
         int index = wrong_classifications.at(rng() * (double) wrong_classifications.size()).at(0);
         rule = rule_from_sample(ga, dataset.features.at(index), dataset.labels.at(index));
@@ -180,18 +176,18 @@ Individual dummy_individual() {
     return Individual();
 }
 
-Individual generate_individual(GeneticAlgorithm *ga) {
+Individual generate_individual(GeneticAlgorithm *ga, int rule_count) {
     std::vector<Rule> new_rules;
-    for (int i = 0; i < ga->get_rule_count(); i++) {
+    for (int i = 0; i < rule_count; i++) {
         new_rules.push_back(generate_rule(ga));
     }
     return Individual(ga, new_rules);
 }
 
-Individual load_individual(GeneticAlgorithm *ga, std::string dump) {
+Individual load_individual(GeneticAlgorithm *ga, std::string dump, int rule_count) {
     std::vector<Rule> new_rules;
     std::stringstream ss(dump);
-    for (int i = 0; i < ga->get_rule_count(); i++) {
+    for (int i = 0; i < rule_count; i++) {
         std::string substr;
         std::getline(ss, substr, '|');
         new_rules.push_back(load_rule(ga, substr));
@@ -200,16 +196,16 @@ Individual load_individual(GeneticAlgorithm *ga, std::string dump) {
 }
 
 Individual
-individual_from_samples(GeneticAlgorithm *ga, Dataset &dataset) {
+individual_from_samples(GeneticAlgorithm *ga, Dataset &dataset, int rule_count) {
     std::vector<Rule> new_rules;
-    if (ga->get_rule_count() == dataset.features.size()) {
+    if (rule_count == dataset.features.size()) {
         // load 1 to 1 mapping of rules to dataset features for instant 100% fitness at this rule count
         for (int i = 0; i < dataset.features.size(); i++) {
             Rule rule = rule_from_sample(ga, dataset.features.at(i), dataset.labels.at(i));
             new_rules.push_back(rule);
         }
     } else {
-        for (int i = 0; i < ga->get_rule_count(); i++) {
+        for (int i = 0; i < rule_count; i++) {
             int index = rng() * dataset.features.size();
             Rule rule = rule_from_sample(ga, dataset.features.at(index), dataset.labels.at(index));
             new_rules.push_back(rule);

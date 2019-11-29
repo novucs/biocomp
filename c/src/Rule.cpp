@@ -22,16 +22,6 @@ double Rule::generalisation() {
     return hash_count / (double) condition.size();
 }
 
-Rule Rule::uniform_crossover(Rule &other) {
-    std::vector<Bounds> new_condition;
-    for (std::vector<Bounds>::size_type i = 0; i < condition.size(); i++) {
-        Bounds bounds = rng() < 0.5 ? condition.at(i) : other.condition.at(i);
-        new_condition.push_back(bounds);
-    }
-    int new_action = rng() < 0.5 ? action : other.action;
-    return Rule(ga, new_condition, new_action);
-}
-
 Rule Rule::mutate() {
     std::vector<Bounds> new_condition;
     for (Bounds &bounds : condition) {
