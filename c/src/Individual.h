@@ -45,9 +45,9 @@ public:
 
     Individual compress();
 
-    Individual cover(Dataset &dataset);
+    Individual cover(Dataset &dataset, std::vector<std::vector<int>> &wrong_classifications);
 
-    std::vector<int> wrong_classifications(Dataset &dataset);
+    std::vector<std::vector<int>> wrong_classifications(Dataset &dataset);
 };
 
 Individual dummy_individual();

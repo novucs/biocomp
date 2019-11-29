@@ -130,51 +130,44 @@ Individual Individual::compress() {
     return Individual(ga, new_rules);
 }
 
-Individual Individual::cover(Dataset &dataset) {
-    std::vector<int> wrong_classifications;
-    auto individual = compress();
-
-    for (int i = 0; i < dataset.features.size(); i++) {
-        for (int j = 0; j < individual.rule_count(); j++) {
-            Rule &rule = individual.rules.at(j);
-            if (rule.matches(dataset.features.at(i))) {
-                if (rule.get_action() != dataset.labels.at(i)) {
-                    wrong_classifications.push_back(i);
-                    individual.rules.erase(individual.rules.begin() + j);
-                }
-                break;
-            }
-        }
+Individual Individual::cover(Dataset &dataset, std::vector<std::vector<int>> &wrong_classifications) {
+    if (wrong_classifications.empty()) {
+        return Individual(*this);
     }
+
+    std::vector<int> indices = wrong_classifications.at(rng() * (double) wrong_classifications.size());
+    int sample_id = indices.at(0);
+    int rule_id = indices.at(1);
+
+    std::vector<Rule> new_rules(this->rules);
+    new_rules.erase(new_rules.begin() + rule_id);
+
+    Individual individual(ga, new_rules);
+    individual = individual.compress();
 
     // cover missing rules using dataset samples this individual classifies wrongly
-    int missing_rules = ga->get_rule_count() - individual.rule_count();
-    int wrong_covering_count = std::min((int) wrong_classifications.size(), missing_rules);
-    for (int i = 0; i < wrong_covering_count; i++) {
-        int wrong_classification_id = rng() * wrong_classifications.size();
-        int index = wrong_classifications.at(wrong_classification_id);
-        Rule rule = rule_from_sample(ga, dataset.features.at(index), dataset.labels.at(index));
-        individual.rules.insert(individual.rules.begin(), rule);
-    }
+    Rule rule = rule_from_sample(ga, dataset.features.at(sample_id), dataset.labels.at(sample_id));
+    individual.rules.insert(individual.rules.begin(), rule);
 
     // cover remaining missing rules using random dataset samples
-    missing_rules = ga->get_rule_count() - individual.rule_count();
+    int missing_rules = ga->get_rule_count() - individual.rule_count();
     for (int i = 0; i < missing_rules; i++) {
-        int index = rng() * dataset.features.size();
-        Rule rule = rule_from_sample(ga, dataset.features.at(index), dataset.labels.at(index));
+        int index = wrong_classifications.at(rng() * (double) wrong_classifications.size()).at(0);
+        rule = rule_from_sample(ga, dataset.features.at(index), dataset.labels.at(index));
         individual.rules.insert(individual.rules.begin(), rule);
     }
 
     return individual;
 }
 
-std::vector<int> Individual::wrong_classifications(Dataset &dataset) {
-    std::vector<int> classifications;
-    for (int i = 0; i < dataset.features.size(); i++) {
-        for (Rule &rule : rules) {
-            if (rule.matches(dataset.features.at(i))) {
-                if (rule.get_action() != dataset.labels.at(i)) {
-                    classifications.push_back(i);
+std::vector<std::vector<int>> Individual::wrong_classifications(Dataset &dataset) {
+    std::vector<std::vector<int>> classifications;
+    for (int sample_id = 0; sample_id < dataset.features.size(); sample_id++) {
+        for (int rule_id = 0; rule_id < rules.size(); rule_id++) {
+            Rule &rule = rules.at(rule_id);
+            if (rule.matches(dataset.features.at(sample_id))) {
+                if (rule.get_action() != dataset.labels.at(sample_id)) {
+                    classifications.push_back({sample_id, rule_id});
                 }
                 break;
             }

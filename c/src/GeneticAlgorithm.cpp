@@ -178,7 +178,8 @@ Individual GeneticAlgorithm::create_offspring(FitnessAggregate &fitness_aggregat
     }
 
     if (rng() < cover_chance) {
-        offspring = offspring.cover(train);
+        std::vector<std::vector<int>> wrong_classifications = offspring.wrong_classifications(train);
+        offspring = offspring.cover(train, wrong_classifications);
     }
 
     return offspring;
@@ -251,8 +252,9 @@ void GeneticAlgorithm::train_step() {
     }
 
     new_population.push_back(Individual(overall_best));
+    std::vector<std::vector<int>> wrong_classifications = overall_best.wrong_classifications(train);
     for (int i = 0; i < covered_best_variations; i++) {
-        new_population.push_back(overall_best.cover(train).mutate());
+        new_population.push_back(overall_best.cover(train, wrong_classifications).mutate());
     }
 
     population = new_population;
